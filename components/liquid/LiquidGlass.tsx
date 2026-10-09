@@ -1,59 +1,61 @@
 import React from "react";
-import { View, StyleSheet, ViewStyle, StyleProp, Platform } from "react-native";
+import { View, StyleSheet, ViewStyle, StyleProp } from "react-native";
 import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 
 interface Props {
   children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   intensity?: number;
   borderRadius?: number;
-  tint?: "dark" | "light" | "default" | "systemMaterialDark";
+  tint?: "dark" | "light" | "default";
 }
 
-/**
- * Liquid Glass real (estilo Apple):
- * - BlurView nativo
- * - Borde hairline semi-transparente
- * - Sin gradientes de color ni caja opaca detrás
- */
 export function LiquidGlass({
   children,
   style,
-  intensity = 64,
-  borderRadius = 20,
+  intensity = 35, // Menos opaco, más "líquido"
+  borderRadius = 24,
   tint = "dark",
 }: Props) {
   return (
-    <View style={[styles.outer, { borderRadius }, style]}>
+    <View style={[styles.wrap, { borderRadius }, style]}>
+      {/* Fondo de desenfoque base */}
       <BlurView
         intensity={intensity}
-        tint={tint as any}
-        experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
-        style={[StyleSheet.absoluteFillObject, { borderRadius }]}
+        tint={tint}
+        style={[StyleSheet.absoluteFill, { borderRadius }]}
       />
-      <View
-        pointerEvents="none"
+      
+      {/* Capa sutil de tinte para asimilar el material de iOS */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.03)" }]} />
+
+      {/* Reflejo asimétrico del cristal (Luz arriba izquierda, sombra abajo derecha) */}
+      <LinearGradient
+        colors={[
+          "rgba(255,255,255,0.4)",  // Brillo fuerte superior
+          "rgba(255,255,255,0.0)",  // Transparencia en medio
+          "rgba(255,255,255,0.05)", // Ligero reflejo inferior
+        ]}
+        locations={[0, 0.4, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={[
-          StyleSheet.absoluteFillObject,
+          StyleSheet.absoluteFill,
           {
             borderRadius,
-            borderWidth: StyleSheet.hairlineWidth,
-            borderColor: "rgba(255,255,255,0.22)",
-            backgroundColor: "rgba(255,255,255,0.04)",
+            borderWidth: 1.5,
+            borderColor: "rgba(255,255,255,0.15)",
           },
         ]}
+        pointerEvents="none"
       />
-      <View style={styles.inner}>{children}</View>
+      <View style={styles.content}>{children}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  outer: {
-    overflow: "hidden",
-    backgroundColor: "transparent",
-  },
-  inner: {
-    zIndex: 1,
-  },
+  wrap: { overflow: "hidden", backgroundColor: "transparent" },
+  content: { zIndex: 1 },
 });
