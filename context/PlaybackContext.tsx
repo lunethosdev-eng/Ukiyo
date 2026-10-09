@@ -1,12 +1,4 @@
-// context/PlaybackContext.tsx
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-  useRef,
-} from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import NetInfo from "@react-native-community/netinfo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
@@ -28,12 +20,16 @@ interface PlaybackContextType {
   currentTrack: Track | null;
   isPlaying: boolean;
   isOffline: boolean;
-  position: number; // seconds
+  position: number;
   duration: number;
   downloadedTracks: Track[];
-  play: (track: Track) => Promise<void>;
+  queue: Track[];
+  play: (track: Track, newQueue?: Track[]) => Promise<void>;
   pause: () => Promise<void>;
   resume: () => Promise<void>;
+  togglePlay: () => Promise<void>;
+  playNext: () => Promise<void>;
+  playPrev: () => Promise<void>;
   seekTo: (seconds: number) => Promise<void>;
   downloadTrack: (track: Track) => Promise<void>;
   sound: Audio.Sound | null;
@@ -43,6 +39,7 @@ const PlaybackContext = createContext<PlaybackContextType | null>(null);
 
 export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
+  const [queue, setQueue] = useState<Track[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [position, setPosition] = useState(0);
@@ -50,7 +47,6 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const [downloadedTracks, setDownloadedTracks] = useState<Track[]>([]);
   const soundRef = useRef<Audio.Sound | null>(null);
 
-  // Network status
   useEffect(() => {
     const unsub = NetInfo.addEventListener((state) => {
       setIsOffline(!(state.isConnected && state.isInternetReachable));
@@ -58,7 +54,6 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     return () => unsub();
   }, []);
 
-  // Load offline library
   useEffect(() => {
     (async () => {
       try {
@@ -68,7 +63,6 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  // Status update loop
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isPlaying && soundRef.current) {
@@ -78,23 +72,23 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
           setPosition((status.positionMillis || 0) / 1000);
           setDuration((status.durationMillis || 0) / 1000);
         }
-      }, 100); // 10fps for smooth karaoke
+      }, 100);
     }
     return () => clearInterval(interval);
   }, [isPlaying]);
 
-  const play = useCallback(
-    async (track: Track) => {
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
+  const play = useCallback(async (track: Track, newQueue?: Track[]) => {
+    if (newQueue) setQueue(newQueue);
+    else if (queue.length === 0) setQueue([track]);
 
-      const source =
-        isOffline && track.localUri
-          ? { uri: track.localUri }
-          : { uri: track.url };
+    if (soundRef.current) {
+      await soundRef.current.unloadAsync();
+      soundRef.current = null;
+    }
 
+    const source = isOffline && track.localUri ? { uri: track.localUri } : { uri: track.url };
+    
+    try {
       const { sound } = await Audio.Sound.createAsync(source, {
         shouldPlay: true,
         progressUpdateIntervalMillis: 100,
@@ -105,15 +99,17 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
           setIsPlaying(status.isPlaying);
           setPosition((status.positionMillis || 0) / 1000);
           setDuration((status.durationMillis || 0) / 1000);
+          if (status.didJustFinish) playNext();
         }
       });
 
       soundRef.current = sound;
       setCurrentTrack(track);
       setIsPlaying(true);
-    },
-    [isOffline]
-  );
+    } catch (error) {
+      console.warn("No se pudo reproducir la pista", error);
+    }
+  }, [isOffline, queue]);
 
   const pause = useCallback(async () => {
     if (soundRef.current) {
@@ -129,6 +125,25 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const togglePlay = useCallback(async () => {
+    if (isPlaying) await pause();
+    else await resume();
+  }, [isPlaying, pause, resume]);
+
+  const playNext = useCallback(async () => {
+    if (!currentTrack || queue.length <= 1) return;
+    const currentIndex = queue.findIndex(t => t.id === currentTrack.id);
+    const nextTrack = queue[(currentIndex + 1) % queue.length];
+    await play(nextTrack);
+  }, [currentTrack, queue, play]);
+
+  const playPrev = useCallback(async () => {
+    if (!currentTrack || queue.length <= 1) return;
+    const currentIndex = queue.findIndex(t => t.id === currentTrack.id);
+    const prevIndex = currentIndex === 0 ? queue.length - 1 : currentIndex - 1;
+    await play(queue[prevIndex]);
+  }, [currentTrack, queue, play]);
+
   const seekTo = useCallback(async (seconds: number) => {
     if (soundRef.current) {
       await soundRef.current.setPositionAsync(seconds * 1000);
@@ -136,43 +151,22 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const downloadTrack = useCallback(
-    async (track: Track) => {
-      const dir = `${FileSystem.documentDirectory}music/`;
-      await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-      const localUri = `${dir}${track.id}.mp3`;
-
-      const downloadResumable = FileSystem.createDownloadResumable(
-        track.url,
-        localUri
-      );
-      await downloadResumable.downloadAsync();
-
-      const updated = [...downloadedTracks, { ...track, localUri }];
-      setDownloadedTracks(updated);
-      await AsyncStorage.setItem(
-        "@ukiyo/downloaded",
-        JSON.stringify(updated)
-      );
-    },
-    [downloadedTracks]
-  );
+  const downloadTrack = useCallback(async (track: Track) => {
+    const dir = `${FileSystem.documentDirectory}music/`;
+    await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+    const localUri = `${dir}${track.id}.mp3`;
+    const downloadResumable = FileSystem.createDownloadResumable(track.url, localUri);
+    await downloadResumable.downloadAsync();
+    const updated = [...downloadedTracks, { ...track, localUri }];
+    setDownloadedTracks(updated);
+    await AsyncStorage.setItem("@ukiyo/downloaded", JSON.stringify(updated));
+  }, [downloadedTracks]);
 
   return (
     <PlaybackContext.Provider
       value={{
-        currentTrack,
-        isPlaying,
-        isOffline,
-        position,
-        duration,
-        downloadedTracks,
-        play,
-        pause,
-        resume,
-        seekTo,
-        downloadTrack,
-        sound: soundRef.current,
+        currentTrack, isPlaying, isOffline, position, duration, downloadedTracks, queue,
+        play, pause, resume, togglePlay, playNext, playPrev, seekTo, downloadTrack, sound: soundRef.current,
       }}
     >
       {children}
