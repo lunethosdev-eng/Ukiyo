@@ -1,6 +1,6 @@
 // app/(tabs)/profile.tsx
 import React from "react";
-import { View, Text, StyleSheet, Image } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LiquidGlassCard } from "@/components/liquid/LiquidGlassCard";
 import { LiquidButton } from "@/components/liquid/LiquidButton";
@@ -14,10 +14,9 @@ export default function ProfileScreen() {
       <Text style={styles.title}>Perfil</Text>
 
       <View style={styles.center}>
-        <Image
-          source={require("../../assets/splash-icon.png")}
-          style={styles.avatar}
-        />
+        <View style={styles.avatar}>
+          <Text style={styles.avatarLetter}>U</Text>
+        </View>
         <Text style={styles.name}>Usuario Ukiyo</Text>
         <Text style={styles.email}>user@ukiyo.app</Text>
       </View>
@@ -51,7 +50,16 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   center: { alignItems: "center", marginVertical: 32 },
-  avatar: { width: 96, height: 96, borderRadius: 48, marginBottom: 16 },
+  avatar: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#7C3AED",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  avatarLetter: { color: "#fff", fontSize: 42, fontWeight: "800" },
   name: { color: "#fff", fontSize: 22, fontWeight: "700" },
   email: { color: "rgba(255,255,255,0.45)", marginTop: 4 },
   card: {
