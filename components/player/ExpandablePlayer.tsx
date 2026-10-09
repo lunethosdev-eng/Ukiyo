@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { View, Text, StyleSheet, Image, Pressable, Dimensions, ImageBackground, ScrollView } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, interpolate, Extrapolation } from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, interpolate, Extrapolation, runOnJS } from "react-native-reanimated";
 import { useRouter, usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -23,13 +23,20 @@ export function ExpandablePlayer() {
   const expand = useSharedValue(0);
   const start = useSharedValue(0);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
 
   const openKaraoke = useCallback(() => {
     router.push("/player/karaoke");
   }, [router]);
 
+  const collapsePlayer = useCallback(() => {
+    setIsExpanded(false);
+    expand.value = withSpring(0, { damping: 16, stiffness: 200 });
+  }, [expand]);
+
   const pan = Gesture.Pan()
+    .enabled(!isExpanded)
     .onStart(() => {
       start.value = expand.value;
     })
@@ -39,6 +46,7 @@ export function ExpandablePlayer() {
     })
     .onEnd((e) => {
       const shouldOpen = e.velocityY < -400 || expand.value > 0.35;
+      runOnJS(setIsExpanded)(shouldOpen);
       expand.value = withSpring(shouldOpen ? 1 : 0, {
         damping: 12,       // Apple Music physics tuning
         stiffness: 220,    
@@ -115,7 +123,7 @@ export function ExpandablePlayer() {
 
           <Animated.View style={[styles.full, fullStyle]} pointerEvents="box-none">
             <View style={styles.topBar}>
-               <Ionicons name="chevron-down" size={28} color="rgba(255,255,255,0.6)" />
+               <Pressable onPress={collapsePlayer} hitSlop={12}><Ionicons name="chevron-down" size={28} color="rgba(255,255,255,0.8)" /></Pressable>
                <View style={styles.handle} />
                <Pressable onPress={() => setShowOptions(true)} hitSlop={12}>
                  <Ionicons name="ellipsis-horizontal" size={24} color="#fff" />
