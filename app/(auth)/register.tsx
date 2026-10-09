@@ -7,8 +7,11 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useAuth } from "@/context/AuthContext";
 import { LiquidGlass } from "@/components/liquid/LiquidGlass";
 
@@ -16,79 +19,138 @@ export default function RegisterScreen() {
   const router = useRouter();
   const { register } = useAuth();
   const [name, setName] = useState("");
+  const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const onSubmit = async () => {
-    await register(name.trim(), email.trim(), password);
-    router.replace("/(tabs)");
+    if (!name.trim() || !nickname.trim() || !email.trim() || password.length < 4) {
+      Alert.alert("Completa todos los campos", "Nickname y nombre son obligatorios.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await register({ name, nickname, email, password });
+      router.replace("/(tabs)");
+    } finally {
+      setBusy(false);
+    }
   };
+
+  const Field = ({
+    label,
+    ...props
+  }: { label: string } & React.ComponentProps<typeof TextInput>) => (
+    <View style={styles.fieldWrap}>
+      <Text style={styles.label}>{label}</Text>
+      <LiquidGlass borderRadius={12} intensity={36}>
+        <TextInput
+          style={styles.input}
+          placeholderTextColor="rgba(255,255,255,0.28)"
+          autoCapitalize="none"
+          {...props}
+        />
+      </LiquidGlass>
+    </View>
+  );
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <Text style={styles.title}>Crear cuenta</Text>
-      <LiquidGlass borderRadius={12} style={styles.field}>
-        <TextInput
-          style={styles.input}
-          placeholder="Nombre"
-          placeholderTextColor="rgba(255,255,255,0.35)"
-          value={name}
-          onChangeText={setName}
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Animated.Text entering={FadeInDown} style={styles.title}>
+          Crear cuenta
+        </Animated.Text>
+        <Text style={styles.hint}>
+          Elige un nickname único. Puedes cambiar el banner y la privacidad después.
+        </Text>
+
+        <Field label="Nombre" value={name} onChangeText={setName} placeholder="Tu nombre" autoCapitalize="words" />
+        <Field
+          label="Nickname"
+          value={nickname}
+          onChangeText={(t) => setNickname(t.replace(/\s/g, "").toLowerCase())}
+          placeholder="ukiyo_user"
         />
-      </LiquidGlass>
-      <LiquidGlass borderRadius={12} style={styles.field}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="rgba(255,255,255,0.35)"
+        <Field
+          label="Email"
           value={email}
           onChangeText={setEmail}
-          autoCapitalize="none"
+          placeholder="tu@email.com"
           keyboardType="email-address"
         />
-      </LiquidGlass>
-      <LiquidGlass borderRadius={12} style={styles.field}>
-        <TextInput
-          style={styles.input}
-          placeholder="Contraseña"
-          placeholderTextColor="rgba(255,255,255,0.35)"
+        <Field
+          label="Contraseña"
           value={password}
           onChangeText={setPassword}
+          placeholder="••••••••"
           secureTextEntry
         />
-      </LiquidGlass>
-      <Pressable style={styles.btn} onPress={onSubmit}>
-        <Text style={styles.btnText}>Registrarse</Text>
-      </Pressable>
+
+        <Pressable
+          style={[styles.btn, busy && { opacity: 0.5 }]}
+          onPress={onSubmit}
+          disabled={busy}
+        >
+          <Text style={styles.btnText}>Crear cuenta</Text>
+        </Pressable>
+
+        <Pressable onPress={() => router.back()}>
+          <Text style={styles.back}>Volver</Text>
+        </Pressable>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#000",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-  },
+  root: { flex: 1, backgroundColor: "#0c0c0e" },
+  scroll: { padding: 24, paddingTop: 72, paddingBottom: 40 },
   title: {
-    color: "#fff",
-    fontSize: 28,
+    color: "#f5f5f7",
+    fontSize: 32,
     fontWeight: "700",
-    marginBottom: 24,
-    textAlign: "center",
+    letterSpacing: -0.5,
   },
-  field: { marginBottom: 12 },
-  input: { height: 48, paddingHorizontal: 16, color: "#fff", fontSize: 16 },
+  hint: {
+    color: "rgba(245,245,247,0.45)",
+    marginTop: 8,
+    marginBottom: 28,
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  fieldWrap: { marginBottom: 14 },
+  label: {
+    color: "rgba(245,245,247,0.55)",
+    fontSize: 13,
+    marginBottom: 6,
+    marginLeft: 4,
+  },
+  input: {
+    height: 48,
+    paddingHorizontal: 14,
+    color: "#f5f5f7",
+    fontSize: 16,
+  },
   btn: {
-    backgroundColor: "#fff",
-    borderRadius: 999,
-    paddingVertical: 14,
+    backgroundColor: "#f5f5f7",
+    borderRadius: 14,
+    height: 52,
     alignItems: "center",
-    marginTop: 16,
+    justifyContent: "center",
+    marginTop: 12,
   },
-  btnText: { color: "#000", fontWeight: "700", fontSize: 16 },
+  btnText: { color: "#0c0c0e", fontWeight: "700", fontSize: 16 },
+  back: {
+    color: "rgba(245,245,247,0.45)",
+    textAlign: "center",
+    marginTop: 20,
+    fontSize: 15,
+  },
 });
