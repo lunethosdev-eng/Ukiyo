@@ -90,7 +90,7 @@ export function AlbumCarousel({ title, data = DEMO_DATA }: Props) {
             item={item}
             index={index}
             scrollX={scrollX}
-            onPress={() => play(item)}
+            onPress={() => play(item, data)}
           />
         )}
       />
