@@ -6,24 +6,33 @@ import React, {
   useCallback,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Alert } from "react-native";
 
 const KEY = "@ukiyo/auth";
 
 export interface UserProfile {
   name: string;
+  nickname: string;
   email: string;
   photoUri?: string | null;
+  bannerUri?: string | null;
+  isGuest?: boolean;
+  bio?: string;
+  isPublic?: boolean;
 }
 
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
-  login: (email: string, password: string, name?: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (data: {
+    name: string;
+    nickname: string;
+    email: string;
+    password: string;
+  }) => Promise<void>;
+  continueAsGuest: () => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (patch: Partial<UserProfile>) => Promise<void>;
-  pickProfilePhoto: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -48,23 +57,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     else await AsyncStorage.removeItem(KEY);
   };
 
-  const login = useCallback(async (email: string, _password: string, name?: string) => {
-    const existing = await AsyncStorage.getItem(KEY);
-    let photoUri: string | null = null;
-    if (existing) {
+  const login = useCallback(async (email: string, _password: string) => {
+    const raw = await AsyncStorage.getItem(KEY);
+    let prev: Partial<UserProfile> = {};
+    if (raw) {
       try {
-        photoUri = JSON.parse(existing)?.photoUri ?? null;
+        prev = JSON.parse(raw);
       } catch {}
     }
     await persist({
-      name: name || email.split("@")[0],
+      name: prev.name || email.split("@")[0],
+      nickname: prev.nickname || email.split("@")[0],
       email,
-      photoUri,
+      photoUri: prev.photoUri ?? null,
+      bannerUri: prev.bannerUri ?? null,
+      isGuest: false,
+      isPublic: prev.isPublic ?? true,
+      bio: prev.bio ?? "",
     });
   }, []);
 
-  const register = useCallback(async (name: string, email: string, _password: string) => {
-    await persist({ name, email, photoUri: null });
+  const register = useCallback(
+    async (data: { name: string; nickname: string; email: string; password: string }) => {
+      await persist({
+        name: data.name.trim(),
+        nickname: data.nickname.trim().replace(/\s+/g, "").toLowerCase(),
+        email: data.email.trim(),
+        photoUri: null,
+        bannerUri: null,
+        isGuest: false,
+        isPublic: true,
+        bio: "",
+      });
+    },
+    []
+  );
+
+  const continueAsGuest = useCallback(async () => {
+    await persist({
+      name: "Invitado",
+      nickname: "guest",
+      email: "",
+      isGuest: true,
+      isPublic: false,
+      photoUri: null,
+      bannerUri: null,
+    });
   }, []);
 
   const logout = useCallback(async () => {
@@ -80,16 +118,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const pickProfilePhoto = useCallback(async () => {
-    Alert.alert(
-      "Foto de perfil",
-      "La galería se activará cuando expo-image-picker esté en package.json. La sesión ya se guarda al cerrar la app."
-    );
-  }, []);
-
   return (
     <AuthContext.Provider
-      value={{ user, loading, login, register, logout, updateProfile, pickProfilePhoto }}
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        continueAsGuest,
+        logout,
+        updateProfile,
+      }}
     >
       {children}
     </AuthContext.Provider>
