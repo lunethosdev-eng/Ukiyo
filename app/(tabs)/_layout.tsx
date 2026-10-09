@@ -1,38 +1,49 @@
-// app/(tabs)/_layout.tsx
 import { Tabs } from "expo-router";
+import { View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
-import { StyleSheet, Platform } from "react-native";
+import { LiquidGlass } from "@/components/liquid/LiquidGlass";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+function TabBg() {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <LiquidGlass intensity={72} borderRadius={28} style={StyleSheet.absoluteFill} />
+    </View>
+  );
+}
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarActiveTintColor: "#f5f5f7",
+        tabBarInactiveTintColor: "rgba(245,245,247,0.4)",
+        tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
         tabBarStyle: {
           position: "absolute",
+          left: 22,
+          right: 22,
+          bottom: Math.max(insets.bottom, 10),
+          height: 62,
+          borderRadius: 28,
           backgroundColor: "transparent",
           borderTopWidth: 0,
           elevation: 0,
-          height: Platform.OS === "ios" ? 88 : 68,
+          shadowOpacity: 0,
+          overflow: "hidden",
         },
-        tabBarBackground: () => (
-          <BlurView
-            intensity={80}
-            tint="dark"
-            style={StyleSheet.absoluteFill}
-          />
-        ),
-        tabBarActiveTintColor: "#A855F7",
-        tabBarInactiveTintColor: "rgba(255,255,255,0.4)",
+        tabBarBackground: () => <TabBg />,
+        tabBarItemStyle: { paddingTop: 6 },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Para Ti",
+          title: "Inicio",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+            <Ionicons name="play-circle" size={size} color={color} />
           ),
         }}
       />
@@ -50,16 +61,16 @@ export default function TabsLayout() {
         options={{
           title: "Biblioteca",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="library" size={size} color={color} />
+            <Ionicons name="musical-notes" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Perfil",
+          title: "Tú",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+            <Ionicons name="person-circle" size={size} color={color} />
           ),
         }}
       />
