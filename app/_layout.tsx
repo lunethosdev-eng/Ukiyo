@@ -5,12 +5,14 @@ import { StatusBar } from "expo-status-bar";
 import { PlaybackProvider } from "@/context/PlaybackContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { CatalogProvider } from "@/context/CatalogContext";
+import { SettingsProvider } from "@/context/SettingsContext";
 import { ExpandablePlayer } from "@/components/player/ExpandablePlayer";
 
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
       <AuthProvider>
+        <SettingsProvider>
         <CatalogProvider>
           <PlaybackProvider>
             <StatusBar style="light" />
@@ -34,6 +36,7 @@ export default function RootLayout() {
             <ExpandablePlayer />
           </PlaybackProvider>
         </CatalogProvider>
+        </SettingsProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );
