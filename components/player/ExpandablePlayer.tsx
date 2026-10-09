@@ -1,77 +1,108 @@
-// components/player/ExpandablePlayer.tsx
-import React from "react";
-import { Dimensions, StyleSheet, View, Text, Image, Pressable } from "react-native";
+import React, { useCallback } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  Pressable,
+  Dimensions,
+} from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   interpolate,
-  Extrapolation,
+  runOnJS,
 } from "react-native-reanimated";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
-import { usePlayback } from "@/context/PlaybackContext";
-import { ProgressBar } from "./ProgressBar";
 import { Ionicons } from "@expo/vector-icons";
+import { usePlayback } from "@/context/PlaybackContext";
+import { LiquidGlass } from "@/components/liquid/LiquidGlass";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-const MINI_HEIGHT = 78;
-const MAX_TRANSLATE = -(SCREEN_HEIGHT - 100);
+const { height: H, width: W } = Dimensions.get("window");
+const MINI_H = 64;
+const TAB_CLEARANCE = 78;
 
 export function ExpandablePlayer() {
-  const translateY = useSharedValue(0);
-  const contextY = useSharedValue(0);
-  const { currentTrack, isPlaying, pause, resume } = usePlayback();
+  const { currentTrack, isPlaying, togglePlay, position, duration, seek } =
+    usePlayback();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
+  const expand = useSharedValue(0);
+  const start = useSharedValue(0);
 
-  const gesture = Gesture.Pan()
+  const openKaraoke = useCallback(() => {
+    try {
+      router.push("/player/karaoke");
+    } catch {}
+  }, [router]);
+
+  const pan = Gesture.Pan()
     .onStart(() => {
-      contextY.value = translateY.value;
+      start.value = expand.value;
     })
     .onUpdate((e) => {
-      const next = e.translationY + contextY.value;
-      translateY.value = Math.max(Math.min(next, 0), MAX_TRANSLATE);
+      const next = start.value - e.translationY / (H * 0.7);
+      expand.value = Math.min(1, Math.max(0, next));
     })
     .onEnd((e) => {
-      if (e.velocityY < -600 || translateY.value < MAX_TRANSLATE / 2) {
-        translateY.value = withSpring(MAX_TRANSLATE, {
-          damping: 18,
-          stiffness: 140,
-        });
-      } else {
-        translateY.value = withSpring(0, { damping: 16, stiffness: 160 });
-      }
+      const shouldOpen = e.velocityY < -400 || expand.value > 0.35;
+      expand.value = withSpring(shouldOpen ? 1 : 0, {
+        damping: 22,
+        stiffness: 180,
+      });
     });
 
   const sheetStyle = useAnimatedStyle(() => {
-    const radius = interpolate(
-      translateY.value,
-      [MAX_TRANSLATE, 0],
-      [36, 22],
-      Extrapolation.CLAMP
+    const bottom = interpolate(
+      expand.value,
+      [0, 1],
+      [TAB_CLEARANCE + Math.max(insets.bottom, 8), 0]
     );
+    const h = interpolate(expand.value, [0, 1], [MINI_H, H]);
+    const radius = interpolate(expand.value, [0, 1], [16, 0]);
+    const mx = interpolate(expand.value, [0, 1], [12, 0]);
     return {
-      transform: [{ translateY: translateY.value }],
-      borderTopLeftRadius: radius,
-      borderTopRightRadius: radius,
+      position: "absolute" as const,
+      left: mx,
+      right: mx,
+      bottom,
+      height: h,
+      borderRadius: radius,
+      overflow: "hidden" as const,
+      zIndex: 50,
     };
   });
 
+  const miniStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(expand.value, [0, 0.25], [1, 0]),
+  }));
+  const fullStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(expand.value, [0.35, 0.7], [0, 1]),
+  }));
+
   if (!currentTrack) return null;
 
-  return (
-    <GestureDetector gesture={gesture}>
-      <Animated.View style={[styles.sheet, sheetStyle]}>
-        <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFill} />
+  const progress = duration > 0 ? position / duration : 0;
 
-        {/* Mini player bar */}
-        <View style={styles.mini}>
+  return (
+    <GestureDetector gesture={pan}>
+      <Animated.View style={sheetStyle}>
+        <LiquidGlass
+          intensity={80}
+          borderRadius={0}
+          style={StyleSheet.absoluteFill}
+        />
+
+        {/* MINI */}
+        <Animated.View style={[styles.mini, miniStyle]}>
           <Image
             source={{ uri: currentTrack.artwork }}
             style={styles.miniArt}
           />
-          <View style={styles.miniInfo}>
+          <View style={styles.miniMeta}>
             <Text style={styles.miniTitle} numberOfLines={1}>
               {currentTrack.title}
             </Text>
@@ -79,141 +110,122 @@ export function ExpandablePlayer() {
               {currentTrack.artist}
             </Text>
           </View>
-          <Pressable
-            onPress={() => (isPlaying ? pause() : resume())}
-            hitSlop={12}
-          >
+          <Pressable onPress={togglePlay} hitSlop={12}>
             <Ionicons
               name={isPlaying ? "pause" : "play"}
               size={28}
-              color="#fff"
+              color="#f5f5f7"
             />
           </Pressable>
-        </View>
+        </Animated.View>
 
-        {/* Expanded content */}
-        <View style={styles.expanded}>
+        {/* FULL */}
+        <Animated.View style={[styles.full, fullStyle]} pointerEvents="box-none">
+          <View style={styles.handle} />
           <Image
             source={{ uri: currentTrack.artwork }}
-            style={styles.bigArt}
+            style={styles.fullArt}
           />
-          <Text style={styles.title}>{currentTrack.title}</Text>
-          <Text style={styles.artist}>{currentTrack.artist}</Text>
+          <Text style={styles.fullTitle}>{currentTrack.title}</Text>
+          <Text style={styles.fullArtist}>{currentTrack.artist}</Text>
 
-          <ProgressBar />
+          <View style={styles.barTrack}>
+            <View style={[styles.barFill, { width: `${progress * 100}%` }]} />
+          </View>
 
           <View style={styles.controls}>
-            <Pressable onPress={() => {}}>
-              <Ionicons name="play-skip-back" size={32} color="#fff" />
-            </Pressable>
-            <Pressable
-              onPress={() => (isPlaying ? pause() : resume())}
-              style={styles.playBtn}
-            >
+            <Pressable onPress={togglePlay} style={styles.playBtn}>
               <Ionicons
                 name={isPlaying ? "pause" : "play"}
                 size={36}
-                color="#fff"
+                color="#0c0c0e"
               />
-            </Pressable>
-            <Pressable onPress={() => {}}>
-              <Ionicons name="play-skip-forward" size={32} color="#fff" />
             </Pressable>
           </View>
 
-          {/* Karaoke button */}
-          <Pressable
-            style={styles.karaokeBtn}
-            onPress={() => router.push("/player/karaoke")}
-          >
-            <Ionicons name="mic" size={20} color="#A855F7" />
-            <Text style={styles.karaokeText}>Karaoke Lyrics</Text>
+          <Pressable onPress={openKaraoke}>
+            <Text style={styles.lyricsLink}>Letras</Text>
           </Pressable>
-        </View>
+        </Animated.View>
       </Animated.View>
     </GestureDetector>
   );
 }
 
 const styles = StyleSheet.create({
-  sheet: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: SCREEN_HEIGHT,
-    backgroundColor: "rgba(12,8,28,0.82)",
-    overflow: "hidden",
-    zIndex: 100,
-  },
   mini: {
-    height: MINI_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+    height: MINI_H,
     gap: 12,
   },
   miniArt: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: "#1c1c1e",
   },
-  miniInfo: { flex: 1 },
-  miniTitle: { color: "#fff", fontWeight: "600", fontSize: 15 },
-  miniArtist: { color: "rgba(255,255,255,0.55)", fontSize: 13 },
-  expanded: {
-    flex: 1,
+  miniMeta: { flex: 1 },
+  miniTitle: { color: "#f5f5f7", fontSize: 14, fontWeight: "600" },
+  miniArtist: { color: "rgba(245,245,247,0.5)", fontSize: 12, marginTop: 2 },
+  full: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
+    paddingTop: 16,
     paddingHorizontal: 28,
-    paddingTop: 20,
   },
-  bigArt: {
-    width: SCREEN_HEIGHT * 0.32,
-    height: SCREEN_HEIGHT * 0.32,
-    borderRadius: 20,
-    marginBottom: 28,
+  handle: {
+    width: 36,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    marginBottom: 24,
   },
-  title: {
-    color: "#fff",
-    fontSize: 24,
+  fullArt: {
+    width: W * 0.72,
+    height: W * 0.72,
+    borderRadius: 12,
+    backgroundColor: "#1c1c1e",
+    marginTop: 24,
+  },
+  fullTitle: {
+    color: "#f5f5f7",
+    fontSize: 22,
     fontWeight: "700",
+    marginTop: 28,
     textAlign: "center",
   },
-  artist: {
-    color: "rgba(255,255,255,0.6)",
+  fullArtist: {
+    color: "rgba(245,245,247,0.55)",
     fontSize: 16,
     marginTop: 6,
-    marginBottom: 32,
   },
-  controls: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 40,
-    marginTop: 28,
+  barTrack: {
+    width: "100%",
+    height: 3,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 2,
+    marginTop: 32,
+    overflow: "hidden",
   },
+  barFill: {
+    height: "100%",
+    backgroundColor: "#f5f5f7",
+  },
+  controls: { marginTop: 28 },
   playBtn: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "rgba(168,85,247,0.35)",
+    backgroundColor: "#f5f5f7",
     alignItems: "center",
     justifyContent: "center",
   },
-  karaokeBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 36,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 24,
-    backgroundColor: "rgba(168,85,247,0.15)",
-    borderWidth: 1,
-    borderColor: "rgba(168,85,247,0.4)",
-  },
-  karaokeText: {
-    color: "#A855F7",
-    fontWeight: "600",
+  lyricsLink: {
+    color: "rgba(245,245,247,0.55)",
+    marginTop: 24,
     fontSize: 15,
+    fontWeight: "500",
   },
 });
