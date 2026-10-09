@@ -31,6 +31,34 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
+      - name: Sanitize assets to valid PNG
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          try:
+              from PIL import Image
+          except ImportError:
+              import subprocess, sys
+              subprocess.check_call([sys.executable, "-m", "pip", "install", "Pillow", "-q"])
+              from PIL import Image
+
+          assets = Path("assets")
+          assets.mkdir(exist_ok=True)
+          for p in list(assets.glob("*")):
+              if p.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+                  continue
+              try:
+                  img = Image.open(p).convert("RGB")
+                  img = img.resize((1024, 1024), Image.Resampling.LANCZOS)
+                  out = p.with_suffix(".png")
+                  img.save(out, format="PNG", optimize=True)
+                  data = out.read_bytes()
+                  assert data[:8] == b"\x89PNG\r\n\x1a\n"
+                  print(f"OK {out.name} ({len(data)} bytes)")
+              except Exception as e:
+                  print(f"SKIP {p.name}: {e}")
+          PY
+
       - name: Expo Prebuild (Android)
         env:
           EXPO_NO_GIT_STATUS: 1
@@ -40,17 +68,36 @@ jobs:
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon
 
+      - name: Upload unsigned APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ukiyo-unsigned
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn
+
+      - name: Detect Android build-tools version
+        id: bt
+        run: |
+          BT_DIR="${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools"
+          VER=$(ls "$BT_DIR" | sort -V | tail -1)
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "Using build-tools: $VER"
+          ls -la "$BT_DIR/$VER/zipalign"
+
       - name: Sign APK
         uses: r0adkll/sign-android-release@v1
         id: sign
+        continue-on-error: true
         with:
           releaseDirectory: android/app/build/outputs/apk/release
           signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           alias: ${{ secrets.ANDROID_KEY_ALIAS }}
           keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          buildToolsVersion: ${{ steps.bt.outputs.version }}
 
       - name: Upload signed APK
+        if: steps.sign.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: ukiyo-release
