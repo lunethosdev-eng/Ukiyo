@@ -1,84 +1,62 @@
-// app/(auth)/welcome.tsx
-import React from "react";
-import { View, Text, StyleSheet, Dimensions } from "react-native";
+import React, { useEffect } from "react";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
-import { LiquidButton } from "@/components/liquid/LiquidButton";
-import { AuroraBackground } from "@/components/liquid/AuroraBackground";
-
-const { width } = Dimensions.get("window");
+import { useAuth } from "@/context/AuthContext";
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace("/(tabs)");
+    }
+  }, [user, loading]);
+
+  if (loading) {
+    return <View style={styles.container} />;
+  }
 
   return (
     <View style={styles.container}>
-      <AuroraBackground />
-      <LinearGradient
-        colors={["transparent", "rgba(10,6,24,0.85)", "#0A0618"]}
-        style={StyleSheet.absoluteFill}
-      />
+      <Text style={styles.logo}>Ukiyo</Text>
+      <Text style={styles.sub}>Tu música</Text>
 
-      <View style={styles.content}>
-        <View style={styles.logoCircle}>
-          <Text style={styles.logoLetter}>U</Text>
-        </View>
-        <Text style={styles.title}>Ukiyo</Text>
-        <Text style={styles.subtitle}>Música que fluye como el agua</Text>
-
-        <LiquidButton
-          title="Comenzar"
-          onPress={() => router.push("/(auth)/login")}
-          style={{ width: width - 64, marginTop: 48 }}
-        />
-        <Text
-          style={styles.link}
-          onPress={() => router.push("/(auth)/register")}
-        >
-          ¿No tienes cuenta? Regístrate
-        </Text>
-      </View>
+      <Pressable
+        style={styles.primary}
+        onPress={() => router.push("/(auth)/login")}
+      >
+        <Text style={styles.primaryText}>Continuar</Text>
+      </Pressable>
+      <Pressable onPress={() => router.push("/(auth)/register")}>
+        <Text style={styles.link}>Crear cuenta</Text>
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0A0618" },
-  content: {
+  container: {
     flex: 1,
+    backgroundColor: "#000",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 32,
   },
-  logoCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 28,
-    backgroundColor: "#7C3AED",
+  logo: { color: "#fff", fontSize: 44, fontWeight: "700", letterSpacing: -1 },
+  sub: { color: "rgba(255,255,255,0.45)", marginTop: 8, marginBottom: 48 },
+  primary: {
+    backgroundColor: "#fff",
+    borderRadius: 999,
+    paddingVertical: 14,
+    paddingHorizontal: 48,
+    width: "100%",
     alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
   },
-  logoLetter: {
-    color: "#fff",
-    fontSize: 52,
-    fontWeight: "800",
-  },
-  title: {
-    color: "#fff",
-    fontSize: 48,
-    fontWeight: "800",
-    letterSpacing: -1,
-  },
-  subtitle: {
-    color: "rgba(255,255,255,0.55)",
-    fontSize: 17,
-    marginTop: 8,
-    textAlign: "center",
-  },
+  primaryText: { color: "#000", fontWeight: "700", fontSize: 16 },
   link: {
-    color: "rgba(255,255,255,0.5)",
-    marginTop: 24,
+    color: "rgba(255,255,255,0.55)",
+    marginTop: 20,
     fontSize: 15,
   },
 });
