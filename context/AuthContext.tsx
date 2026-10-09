@@ -6,7 +6,7 @@ import React, {
   useCallback,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as ImagePicker from "expo-image-picker";
+import { Alert } from "react-native";
 
 const KEY = "@ukiyo/auth";
 
@@ -49,11 +49,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = useCallback(async (email: string, _password: string, name?: string) => {
-    // Persistencia local (puedes conectar Supabase Auth después)
+    const existing = await AsyncStorage.getItem(KEY);
+    let photoUri: string | null = null;
+    if (existing) {
+      try {
+        photoUri = JSON.parse(existing)?.photoUri ?? null;
+      } catch {}
+    }
     await persist({
       name: name || email.split("@")[0],
       email,
-      photoUri: null,
+      photoUri,
     });
   }, []);
 
@@ -75,18 +81,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const pickProfilePhoto = useCallback(async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.85,
-    });
-    if (!result.canceled && result.assets[0]?.uri) {
-      await updateProfile({ photoUri: result.assets[0].uri });
-    }
-  }, [updateProfile]);
+    Alert.alert(
+      "Foto de perfil",
+      "La galería se activará cuando expo-image-picker esté en package.json. La sesión ya se guarda al cerrar la app."
+    );
+  }, []);
 
   return (
     <AuthContext.Provider
