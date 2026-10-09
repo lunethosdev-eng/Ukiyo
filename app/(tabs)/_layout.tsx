@@ -1,80 +1,104 @@
+import React from "react";
+import { View, StyleSheet, Pressable, Dimensions } from "react-native";
 import { Tabs } from "expo-router";
-import { View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { LiquidGlass } from "@/components/liquid/LiquidGlass";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LiquidGlass } from "@/components/liquid/LiquidGlass";
+import { LiquidProvider } from "@/components/liquid/LiquidProvider"; // Tu Skia provider
 
-function TabBg() {
+const { width } = Dimensions.get("window");
+
+function LiquidTabItem({ icon, isFocused, onPress }: { icon: any, isFocused: boolean, onPress: () => void }) {
+  const pullY = useSharedValue(0);
+
+  const pan = Gesture.Pan()
+    .onUpdate((e) => {
+      // Limita la deformación hacia arriba para que parezca una gota tensa
+      pullY.value = Math.max(e.translationY, -60);
+    })
+    .onEnd(() => {
+      // Físicas de rebote (bounce) estilo Apple
+      pullY.value = withSpring(0, { damping: 10, stiffness: 200, mass: 0.8 });
+    });
+
+  const dropStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: pullY.value }],
+    opacity: isFocused ? 1 : 0,
+  }));
+
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <LiquidGlass intensity={72} borderRadius={28} style={StyleSheet.absoluteFill} />
+    <GestureDetector gesture={pan}>
+      <Pressable onPress={onPress} style={styles.tabItem}>
+        {/* Esta es la "gota" que se estirará. El LiquidProvider la fusionará con la barra */}
+        <Animated.View style={[styles.activeDrop, dropStyle]} />
+        <Ionicons 
+          name={icon} 
+          size={24} 
+          color={isFocused ? "#fff" : "rgba(255,255,255,0.4)"} 
+          style={{ zIndex: 10 }} 
+        />
+      </Pressable>
+    </GestureDetector>
+  );
+}
+
+function CustomTabBar({ state, descriptors, navigation }: any) {
+  const insets = useSafeAreaInsets();
+  
+  return (
+    <View style={[styles.tabBarContainer, { bottom: Math.max(insets.bottom, 10) }]} pointerEvents="box-none">
+      {/* LiquidProvider aplica el efecto gooey entre la barra base y las gotas que jalamos */}
+      <LiquidProvider>
+        <LiquidGlass intensity={70} borderRadius={28} style={StyleSheet.absoluteFill} />
+        <View style={styles.tabBarInner}>
+          {state.routes.map((route: any, index: number) => {
+            const isFocused = state.index === index;
+            const icons = ["play-circle", "search", "musical-notes", "person-circle"];
+            
+            const onPress = () => {
+              const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+              if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name);
+            };
+
+            return (
+              <LiquidTabItem 
+                key={route.key} 
+                icon={icons[index]} 
+                isFocused={isFocused} 
+                onPress={onPress} 
+              />
+            );
+          })}
+        </View>
+      </LiquidProvider>
     </View>
   );
 }
 
 export default function TabsLayout() {
-  const insets = useSafeAreaInsets();
-  
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: "#f5f5f7",
-        tabBarInactiveTintColor: "rgba(245,245,247,0.4)",
-        tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
-        tabBarStyle: {
-          position: "absolute",
-          left: 22,
-          right: 22,
-          bottom: Math.max(insets.bottom, 10),
-          height: 62,
-          borderRadius: 28,
-          backgroundColor: "transparent",
-          borderTopWidth: 0,
-          elevation: 0,
-          shadowOpacity: 0,
-          overflow: "hidden",
-        },
-        tabBarBackground: () => <TabBg />,
-        tabBarItemStyle: { paddingTop: 6 },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Inicio",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="play-circle" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="search"
-        options={{
-          title: "Buscar",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="library"
-        options={{
-          title: "Biblioteca",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="musical-notes" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Tú",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-circle" size={size} color={color} />
-          ),
-        }}
-      />
+    <Tabs tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
+      <Tabs.Screen name="index" />
+      <Tabs.Screen name="search" />
+      <Tabs.Screen name="library" />
+      <Tabs.Screen name="profile" />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBarContainer: {
+    position: "absolute", left: 22, right: 22, height: 64, zIndex: 100,
+  },
+  tabBarInner: {
+    flexDirection: "row", height: "100%", alignItems: "center", justifyContent: "space-around",
+  },
+  tabItem: {
+    flex: 1, height: "100%", alignItems: "center", justifyContent: "center", backgroundColor: "transparent",
+  },
+  activeDrop: {
+    position: "absolute", width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)",
+  }
+});
