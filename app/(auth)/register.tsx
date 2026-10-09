@@ -1,19 +1,26 @@
-// app/(auth)/register.tsx
 import React, { useState } from "react";
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { useRouter } from "expo-router";
-import { AuroraBackground } from "@/components/liquid/AuroraBackground";
-import { LiquidGlassCard } from "@/components/liquid/LiquidGlassCard";
-import { GlassInput } from "@/components/ui/GlassInput";
-import { LiquidButton } from "@/components/liquid/LiquidButton";
+import { useAuth } from "@/context/AuthContext";
+import { LiquidGlass } from "@/components/liquid/LiquidGlass";
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { register } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleRegister = () => {
+  const onSubmit = async () => {
+    await register(name.trim(), email.trim(), password);
     router.replace("/(tabs)");
   };
 
@@ -22,69 +29,66 @@ export default function RegisterScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <AuroraBackground />
-      <View style={styles.content}>
-        <Text style={styles.title}>Crear cuenta</Text>
-        <Text style={styles.subtitle}>Únete a Ukiyo</Text>
-
-        <LiquidGlassCard style={styles.card}>
-          <GlassInput
-            placeholder="Nombre"
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="words"
-          />
-          <GlassInput
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-          />
-          <GlassInput
-            placeholder="Contraseña"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-          <LiquidButton title="Registrarse" onPress={handleRegister} />
-        </LiquidGlassCard>
-
-        <Text
-          style={styles.link}
-          onPress={() => router.back()}
-        >
-          Ya tengo cuenta
-        </Text>
-      </View>
+      <Text style={styles.title}>Crear cuenta</Text>
+      <LiquidGlass borderRadius={12} style={styles.field}>
+        <TextInput
+          style={styles.input}
+          placeholder="Nombre"
+          placeholderTextColor="rgba(255,255,255,0.35)"
+          value={name}
+          onChangeText={setName}
+        />
+      </LiquidGlass>
+      <LiquidGlass borderRadius={12} style={styles.field}>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          placeholderTextColor="rgba(255,255,255,0.35)"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+      </LiquidGlass>
+      <LiquidGlass borderRadius={12} style={styles.field}>
+        <TextInput
+          style={styles.input}
+          placeholder="Contraseña"
+          placeholderTextColor="rgba(255,255,255,0.35)"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+      </LiquidGlass>
+      <Pressable style={styles.btn} onPress={onSubmit}>
+        <Text style={styles.btnText}>Registrarse</Text>
+      </Pressable>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0A0618" },
-  content: {
+  container: {
     flex: 1,
+    backgroundColor: "#000",
     justifyContent: "center",
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
   },
   title: {
     color: "#fff",
-    fontSize: 34,
-    fontWeight: "800",
+    fontSize: 28,
+    fontWeight: "700",
+    marginBottom: 24,
     textAlign: "center",
   },
-  subtitle: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 32,
-    marginTop: 6,
+  field: { marginBottom: 12 },
+  input: { height: 48, paddingHorizontal: 16, color: "#fff", fontSize: 16 },
+  btn: {
+    backgroundColor: "#fff",
+    borderRadius: 999,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 16,
   },
-  card: { padding: 20 },
-  link: {
-    color: "rgba(255,255,255,0.5)",
-    textAlign: "center",
-    marginTop: 24,
-    fontSize: 15,
-  },
+  btnText: { color: "#000", fontWeight: "700", fontSize: 16 },
 });
