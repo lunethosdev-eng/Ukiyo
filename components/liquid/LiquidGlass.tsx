@@ -28,14 +28,14 @@ export function LiquidGlass({
       />
       
       {/* Tinte Apple UI Glass */}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.06)" }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(24,28,38,0.38)" }]} />
 
       {/* Reflejo biselado tridimensional del cristal */}
       <LinearGradient
         colors={[
-          "rgba(255,255,255,0.45)",
-          "rgba(255,255,255,0.0)",
-          "rgba(255,255,255,0.08)",
+          "rgba(255,255,255,0.52)",
+          "rgba(210,225,255,0.10)",
+          "rgba(255,255,255,0.16)",
         ]}
         locations={[0, 0.45, 1]}
         start={{ x: 0, y: 0 }}
@@ -45,7 +45,7 @@ export function LiquidGlass({
           {
             borderRadius,
             borderWidth: 1.2,
-            borderColor: "rgba(255,255,255,0.18)",
+            borderColor: "rgba(255,255,255,0.30)",
           },
         ]}
         pointerEvents="none"
@@ -56,6 +56,6 @@ export function LiquidGlass({
 }
 
 const styles = StyleSheet.create({
-  wrap: { overflow: "hidden", backgroundColor: "transparent" },
+  wrap: { overflow: "hidden", backgroundColor: "rgba(18,22,32,0.28)", borderWidth: 1, borderColor: "rgba(255,255,255,0.14)" },
   content: { zIndex: 1, width: "100%", height: "100%" },
 });
