@@ -1,6 +1,6 @@
 // app/(auth)/welcome.tsx
 import React from "react";
-import { View, Text, StyleSheet, Image, Dimensions } from "react-native";
+import { View, Text, StyleSheet, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { LiquidButton } from "@/components/liquid/LiquidButton";
@@ -20,15 +20,11 @@ export default function WelcomeScreen() {
       />
 
       <View style={styles.content}>
-        <Image
-          source={require("../../assets/splash-icon.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+        <View style={styles.logoCircle}>
+          <Text style={styles.logoLetter}>U</Text>
+        </View>
         <Text style={styles.title}>Ukiyo</Text>
-        <Text style={styles.subtitle}>
-          Música que fluye como el agua
-        </Text>
+        <Text style={styles.subtitle}>Música que fluye como el agua</Text>
 
         <LiquidButton
           title="Comenzar"
@@ -54,7 +50,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 32,
   },
-  logo: { width: 120, height: 120, marginBottom: 20 },
+  logoCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 28,
+    backgroundColor: "#7C3AED",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  logoLetter: {
+    color: "#fff",
+    fontSize: 52,
+    fontWeight: "800",
+  },
   title: {
     color: "#fff",
     fontSize: 48,
