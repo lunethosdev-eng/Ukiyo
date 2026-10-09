@@ -44,7 +44,7 @@ export default function HomeScreen() {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
                 renderItem={({ item }) => (
-                  <Pressable onPress={() => play(item)} style={styles.card}>
+                  <Pressable onPress={() => play(item, tracks)} style={styles.card}>
                     <Image source={{ uri: item.artwork }} style={styles.cardArt} />
                     <Text style={styles.cardTitle} numberOfLines={2}>
                       {item.title}
@@ -60,7 +60,7 @@ export default function HomeScreen() {
           }
           contentContainerStyle={{ paddingBottom: 140, paddingHorizontal: 16 }}
           renderItem={({ item }: { item: Track }) => (
-            <Pressable onPress={() => play(item)} style={styles.row}>
+            <Pressable onPress={() => play(item, tracks)} style={styles.row}>
               <Image source={{ uri: item.artwork }} style={styles.art} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.title} numberOfLines={1}>
