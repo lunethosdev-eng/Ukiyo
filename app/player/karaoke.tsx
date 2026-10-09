@@ -14,7 +14,7 @@ export default function KaraokeScreen() {
       <KaraokeLyrics />
       <SafeAreaView style={styles.topBar} edges={["top"]}>
         <Pressable onPress={() => router.back()} hitSlop={16}>
-          <Ionicons name="chevron-down" size={32} color="#fff" />
+          <Ionicons name="close" size={30} color="#fff" />
         </Pressable>
       </SafeAreaView>
     </View>
