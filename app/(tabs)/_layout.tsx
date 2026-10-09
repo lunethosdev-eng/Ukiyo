@@ -69,6 +69,25 @@ function LiquidTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           
           {/* SKIA CANVAS: El verdadero Liquid Glass Effect */}
           <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+            {/* Capa oscura para que el cristal conserve detalle sobre fondos claros */}
+            <RoundedRect
+              x={BAR_MARGIN}
+              y={0}
+              width={BAR_WIDTH}
+              height={TAB_HEIGHT}
+              r={28}
+              color="rgba(18,22,32,0.72)"
+            />
+            <RoundedRect
+              x={BAR_MARGIN + 0.6}
+              y={0.6}
+              width={BAR_WIDTH - 1.2}
+              height={TAB_HEIGHT - 1.2}
+              r={27.4}
+              color="rgba(255,255,255,0.05)"
+              style="stroke"
+              strokeWidth={1.2}
+            />
             <Mask
               mask={
                 <Group layer={<Paint><Blur blur={12} /><ColorMatrix matrix={GOOEY_MATRIX} /></Paint>}>
@@ -83,7 +102,7 @@ function LiquidTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               <Rect x={0} y={-50} width={width} height={TAB_HEIGHT + 100}>
                 <LinearGradient
                   start={vec(0, 0)} end={vec(width, TAB_HEIGHT)}
-                  colors={["rgba(255,255,255,0.25)", "rgba(255,255,255,0.05)", "rgba(255,255,255,0.15)"]}
+                  colors={["rgba(255,255,255,0.38)", "rgba(210,225,255,0.12)", "rgba(255,255,255,0.22)"]}
                 />
               </Rect>
             </Mask>
