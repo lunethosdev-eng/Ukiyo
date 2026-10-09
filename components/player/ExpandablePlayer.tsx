@@ -23,6 +23,7 @@ import { BlurView } from "expo-blur";
 import { usePlayback } from "@/context/PlaybackContext";
 import { LiquidGlass } from "@/components/liquid/LiquidGlass";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ActionSheet } from "./ActionSheet"; // Importamos el ActionSheet
 
 const { height: H, width: W } = Dimensions.get("window");
 const MINI_H = 68; // Un poco más alto para parecerse a iOS
@@ -36,6 +37,7 @@ export function ExpandablePlayer() {
   const expand = useSharedValue(0);
   const start = useSharedValue(0);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [showOptions, setShowOptions] = useState(false); // Estado para el menú de opciones
 
   const openKaraoke = useCallback(() => {
     router.push("/player/karaoke");
@@ -104,99 +106,108 @@ export function ExpandablePlayer() {
   const progress = duration > 0 ? position / duration : 0;
 
   return (
-    <GestureDetector gesture={pan}>
-      <Animated.View style={sheetStyle}>
-        
-        {/* Fondo full-screen desenfocado del cover (Apple Music style) */}
-        <Animated.View style={[StyleSheet.absoluteFill, fullStyle]}>
-          <ImageBackground source={{ uri: currentTrack.artwork }} style={StyleSheet.absoluteFill}>
-            <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
-            <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' }} />
-          </ImageBackground>
-        </Animated.View>
+    <>
+      <GestureDetector gesture={pan}>
+        <Animated.View style={sheetStyle}>
+          
+          {/* Fondo full-screen desenfocado del cover (Apple Music style) */}
+          <Animated.View style={[StyleSheet.absoluteFill, fullStyle]}>
+            <ImageBackground source={{ uri: currentTrack.artwork }} style={StyleSheet.absoluteFill}>
+              <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
+              <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' }} />
+            </ImageBackground>
+          </Animated.View>
 
-        {/* Fondo del mini-player (Liquid Glass normal) */}
-        <Animated.View style={[StyleSheet.absoluteFill, miniStyle]}>
-          <LiquidGlass intensity={60} borderRadius={24} style={StyleSheet.absoluteFill} />
-        </Animated.View>
+          {/* Fondo del mini-player (Liquid Glass normal) */}
+          <Animated.View style={[StyleSheet.absoluteFill, miniStyle]}>
+            <LiquidGlass intensity={60} borderRadius={24} style={StyleSheet.absoluteFill} />
+          </Animated.View>
 
-        {/* ================= MINI PLAYER ================= */}
-        <Animated.View style={[styles.mini, miniStyle]} pointerEvents="box-none">
-          <Image source={{ uri: currentTrack.artwork }} style={styles.miniArt} />
-          <View style={styles.miniMeta}>
-            <Text style={styles.miniTitle} numberOfLines={1}>{currentTrack.title}</Text>
-          </View>
-          <Pressable onPress={togglePlay} hitSlop={12} style={styles.miniPlayBtn}>
-            <Ionicons name={isPlaying ? "pause" : "play"} size={26} color="#000" />
-          </Pressable>
-        </Animated.View>
-
-        {/* ================= FULL PLAYER ================= */}
-        <Animated.View style={[styles.full, fullStyle]} pointerEvents="box-none">
-          {/* Top Bar: Handle & 3 puntos */}
-          <View style={styles.topBar}>
-             <Ionicons name="chevron-down" size={28} color="rgba(255,255,255,0.6)" />
-             <View style={styles.handle} />
-             <Pressable onPress={() => alert("Opciones de canción reales aquí")} hitSlop={12}>
-               <Ionicons name="ellipsis-horizontal" size={24} color="#fff" />
-             </Pressable>
-          </View>
-
-          <ScrollView 
-            contentContainerStyle={styles.scrollContent} 
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Cover en el medio */}
-            <View style={styles.coverContainer}>
-              <Image source={{ uri: currentTrack.artwork }} style={styles.fullArt} />
+          {/* ================= MINI PLAYER ================= */}
+          <Animated.View style={[styles.mini, miniStyle]} pointerEvents="box-none">
+            <Image source={{ uri: currentTrack.artwork }} style={styles.miniArt} />
+            <View style={styles.miniMeta}>
+              <Text style={styles.miniTitle} numberOfLines={1}>{currentTrack.title}</Text>
             </View>
-
-            {/* Info y botón de Follow */}
-            <View style={styles.infoRow}>
-              <View style={styles.titleArea}>
-                <Text style={styles.fullTitle} numberOfLines={2}>{currentTrack.title}</Text>
-                <Text style={styles.fullArtist}>{currentTrack.artist}</Text>
-              </View>
-              <Pressable 
-                style={[styles.followBtn, isFollowing && styles.followingBtn]} 
-                onPress={() => setIsFollowing(!isFollowing)}
-              >
-                <Text style={styles.followText}>{isFollowing ? "Siguiendo" : "Seguir"}</Text>
-              </Pressable>
-            </View>
-
-            {/* Progress Bar simulada (reemplázala por tu ProgressBar real) */}
-            <View style={styles.barTrack}>
-              <View style={[styles.barFill, { width: `${progress * 100}%` }]} />
-            </View>
-
-            {/* Controles */}
-            <View style={styles.controls}>
-              <Ionicons name="play-back" size={36} color="#fff" />
-              <Pressable onPress={togglePlay} style={styles.playBtn}>
-                <Ionicons name={isPlaying ? "pause" : "play"} size={36} color="#0c0c0e" />
-              </Pressable>
-              <Ionicons name="play-forward" size={36} color="#fff" />
-            </View>
-
-            {/* Caja de Lyrics scrolleable abajo del progreso */}
-            <Pressable onPress={openKaraoke} style={{ marginTop: 40, marginBottom: 60 }}>
-              <LiquidGlass intensity={30} borderRadius={20} style={styles.lyricsBox}>
-                <View style={styles.lyricsHeader}>
-                  <Text style={styles.lyricsTitle}>Letras</Text>
-                  <Ionicons name="expand" size={18} color="rgba(255,255,255,0.6)" />
-                </View>
-                <Text style={styles.lyricsPreview}>
-                  {/* Aquí iría la letra sincronizada, este es el preview */}
-                  Toca aquí para ver las letras sincronizadas en pantalla completa...
-                </Text>
-              </LiquidGlass>
+            <Pressable onPress={togglePlay} hitSlop={12} style={styles.miniPlayBtn}>
+              <Ionicons name={isPlaying ? "pause" : "play"} size={26} color="#000" />
             </Pressable>
-          </ScrollView>
-        </Animated.View>
+          </Animated.View>
 
-      </Animated.View>
-    </GestureDetector>
+          {/* ================= FULL PLAYER ================= */}
+          <Animated.View style={[styles.full, fullStyle]} pointerEvents="box-none">
+            {/* Top Bar: Handle & 3 puntos */}
+            <View style={styles.topBar}>
+               <Ionicons name="chevron-down" size={28} color="rgba(255,255,255,0.6)" />
+               <View style={styles.handle} />
+               {/* Disparamos el ActionSheet aquí */}
+               <Pressable onPress={() => setShowOptions(true)} hitSlop={12}>
+                 <Ionicons name="ellipsis-horizontal" size={24} color="#fff" />
+               </Pressable>
+            </View>
+
+            <ScrollView 
+              contentContainerStyle={styles.scrollContent} 
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Cover en el medio */}
+              <View style={styles.coverContainer}>
+                <Image source={{ uri: currentTrack.artwork }} style={styles.fullArt} />
+              </View>
+
+              {/* Info y botón de Follow */}
+              <View style={styles.infoRow}>
+                <View style={styles.titleArea}>
+                  <Text style={styles.fullTitle} numberOfLines={2}>{currentTrack.title}</Text>
+                  <Text style={styles.fullArtist}>{currentTrack.artist}</Text>
+                </View>
+                <Pressable 
+                  style={[styles.followBtn, isFollowing && styles.followingBtn]} 
+                  onPress={() => setIsFollowing(!isFollowing)}
+                >
+                  <Text style={styles.followText}>{isFollowing ? "Siguiendo" : "Seguir"}</Text>
+                </Pressable>
+              </View>
+
+              {/* Progress Bar simulada */}
+              <View style={styles.barTrack}>
+                <View style={[styles.barFill, { width: `${progress * 100}%` }]} />
+              </View>
+
+              {/* Controles */}
+              <View style={styles.controls}>
+                <Ionicons name="play-back" size={36} color="#fff" />
+                <Pressable onPress={togglePlay} style={styles.playBtn}>
+                  <Ionicons name={isPlaying ? "pause" : "play"} size={36} color="#0c0c0e" />
+                </Pressable>
+                <Ionicons name="play-forward" size={36} color="#fff" />
+              </View>
+
+              {/* Caja de Lyrics scrolleable abajo del progreso */}
+              <Pressable onPress={openKaraoke} style={{ marginTop: 40, marginBottom: 60 }}>
+                <LiquidGlass intensity={30} borderRadius={20} style={styles.lyricsBox}>
+                  <View style={styles.lyricsHeader}>
+                    <Text style={styles.lyricsTitle}>Letras</Text>
+                    <Ionicons name="expand" size={18} color="rgba(255,255,255,0.6)" />
+                  </View>
+                  <Text style={styles.lyricsPreview}>
+                    Toca aquí para ver las letras sincronizadas en pantalla completa...
+                  </Text>
+                </LiquidGlass>
+              </Pressable>
+            </ScrollView>
+          </Animated.View>
+
+        </Animated.View>
+      </GestureDetector>
+
+      {/* Montamos el ActionSheet FUERA del GestureDetector */}
+      <ActionSheet 
+        isVisible={showOptions} 
+        onClose={() => setShowOptions(false)} 
+        track={currentTrack} 
+      />
+    </>
   );
 }
 
