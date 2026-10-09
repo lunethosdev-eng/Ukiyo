@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   Image,
   Pressable,
   Dimensions,
+  ImageBackground,
+  ScrollView,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -13,219 +15,223 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   interpolate,
-  runOnJS,
+  Extrapolation,
 } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import { usePlayback } from "@/context/PlaybackContext";
 import { LiquidGlass } from "@/components/liquid/LiquidGlass";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { height: H, width: W } = Dimensions.get("window");
-const MINI_H = 64;
+const MINI_H = 68; // Un poco más alto para parecerse a iOS
 const TAB_CLEARANCE = 78;
 
 export function ExpandablePlayer() {
-  const { currentTrack, isPlaying, togglePlay, position, duration, seek } =
-    usePlayback();
+  const { currentTrack, isPlaying, togglePlay, position, duration } = usePlayback();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  
   const expand = useSharedValue(0);
   const start = useSharedValue(0);
+  const [isFollowing, setIsFollowing] = useState(false);
 
   const openKaraoke = useCallback(() => {
-    try {
-      router.push("/player/karaoke");
-    } catch {}
+    router.push("/player/karaoke");
   }, [router]);
 
+  // Físicas "Gooey" y rebote
   const pan = Gesture.Pan()
     .onStart(() => {
       start.value = expand.value;
     })
     .onUpdate((e) => {
-      const next = start.value - e.translationY / (H * 0.7);
-      expand.value = Math.min(1, Math.max(0, next));
+      const next = start.value - e.translationY / (H * 0.75);
+      // Efecto deformación (gota de agua) permitiendo que 'expand' sobrepase 0 y 1
+      expand.value = next; 
     })
     .onEnd((e) => {
       const shouldOpen = e.velocityY < -400 || expand.value > 0.35;
+      // Rebote súper realista tipo Apple
       expand.value = withSpring(shouldOpen ? 1 : 0, {
-        damping: 22,
-        stiffness: 180,
+        damping: 14,       // Menos fricción = más rebote
+        stiffness: 180,    // Velocidad de retorno
+        mass: 0.8,
+        overshootClamping: false,
       });
     });
 
   const sheetStyle = useAnimatedStyle(() => {
-    const bottom = interpolate(
-      expand.value,
-      [0, 1],
-      [TAB_CLEARANCE + Math.max(insets.bottom, 8), 0]
-    );
-    const h = interpolate(expand.value, [0, 1], [MINI_H, H]);
-    const radius = interpolate(expand.value, [0, 1], [16, 0]);
-    const mx = interpolate(expand.value, [0, 1], [12, 0]);
+    // Si jalamos más allá de los límites, deformamos la vista en Y (efecto gota)
+    const isOverScrolled = expand.value > 1;
+    const isUnderScrolled = expand.value < 0;
+    
+    const scaleY = isOverScrolled 
+      ? 1 + (expand.value - 1) * 0.15 
+      : (isUnderScrolled ? 1 + Math.abs(expand.value) * 0.15 : 1);
+
+    const bottom = interpolate(expand.value, [0, 1], [TAB_CLEARANCE + insets.bottom, 0], Extrapolation.CLAMP);
+    const h = interpolate(expand.value, [0, 1], [MINI_H, H], Extrapolation.CLAMP);
+    const radius = interpolate(expand.value, [0, 1], [24, 0], Extrapolation.CLAMP);
+    const mx = interpolate(expand.value, [0, 1], [12, 0], Extrapolation.CLAMP);
+
     return {
-      position: "absolute" as const,
-      left: mx,
-      right: mx,
-      bottom,
-      height: h,
+      position: "absolute",
+      left: mx, right: mx, bottom, height: h,
       borderRadius: radius,
-      overflow: "hidden" as const,
+      overflow: "hidden",
       zIndex: 50,
+      transform: [
+        { scaleY }, 
+        // Compensamos la posición para que el estiramiento sea desde la base/tope
+        { translateY: isOverScrolled ? (expand.value - 1) * 30 : 0 }
+      ],
     };
   });
 
   const miniStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(expand.value, [0, 0.25], [1, 0]),
+    opacity: interpolate(expand.value, [0, 0.15], [1, 0], Extrapolation.CLAMP),
+    display: expand.value > 0.2 ? 'none' : 'flex'
   }));
+  
   const fullStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(expand.value, [0.35, 0.7], [0, 1]),
+    opacity: interpolate(expand.value, [0.4, 0.8], [0, 1], Extrapolation.CLAMP),
+    display: expand.value < 0.3 ? 'none' : 'flex'
   }));
 
   if (!currentTrack) return null;
-
   const progress = duration > 0 ? position / duration : 0;
 
   return (
     <GestureDetector gesture={pan}>
       <Animated.View style={sheetStyle}>
-        <LiquidGlass
-          intensity={80}
-          borderRadius={0}
-          style={StyleSheet.absoluteFill}
-        />
+        
+        {/* Fondo full-screen desenfocado del cover (Apple Music style) */}
+        <Animated.View style={[StyleSheet.absoluteFill, fullStyle]}>
+          <ImageBackground source={{ uri: currentTrack.artwork }} style={StyleSheet.absoluteFill}>
+            <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
+            <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' }} />
+          </ImageBackground>
+        </Animated.View>
 
-        {/* MINI */}
-        <Animated.View style={[styles.mini, miniStyle]}>
-          <Image
-            source={{ uri: currentTrack.artwork }}
-            style={styles.miniArt}
-          />
+        {/* Fondo del mini-player (Liquid Glass normal) */}
+        <Animated.View style={[StyleSheet.absoluteFill, miniStyle]}>
+          <LiquidGlass intensity={60} borderRadius={24} style={StyleSheet.absoluteFill} />
+        </Animated.View>
+
+        {/* ================= MINI PLAYER ================= */}
+        <Animated.View style={[styles.mini, miniStyle]} pointerEvents="box-none">
+          <Image source={{ uri: currentTrack.artwork }} style={styles.miniArt} />
           <View style={styles.miniMeta}>
-            <Text style={styles.miniTitle} numberOfLines={1}>
-              {currentTrack.title}
-            </Text>
-            <Text style={styles.miniArtist} numberOfLines={1}>
-              {currentTrack.artist}
-            </Text>
+            <Text style={styles.miniTitle} numberOfLines={1}>{currentTrack.title}</Text>
           </View>
-          <Pressable onPress={togglePlay} hitSlop={12}>
-            <Ionicons
-              name={isPlaying ? "pause" : "play"}
-              size={28}
-              color="#f5f5f7"
-            />
+          <Pressable onPress={togglePlay} hitSlop={12} style={styles.miniPlayBtn}>
+            <Ionicons name={isPlaying ? "pause" : "play"} size={26} color="#000" />
           </Pressable>
         </Animated.View>
 
-        {/* FULL */}
+        {/* ================= FULL PLAYER ================= */}
         <Animated.View style={[styles.full, fullStyle]} pointerEvents="box-none">
-          <View style={styles.handle} />
-          <Image
-            source={{ uri: currentTrack.artwork }}
-            style={styles.fullArt}
-          />
-          <Text style={styles.fullTitle}>{currentTrack.title}</Text>
-          <Text style={styles.fullArtist}>{currentTrack.artist}</Text>
-
-          <View style={styles.barTrack}>
-            <View style={[styles.barFill, { width: `${progress * 100}%` }]} />
+          {/* Top Bar: Handle & 3 puntos */}
+          <View style={styles.topBar}>
+             <Ionicons name="chevron-down" size={28} color="rgba(255,255,255,0.6)" />
+             <View style={styles.handle} />
+             <Pressable onPress={() => alert("Opciones de canción reales aquí")} hitSlop={12}>
+               <Ionicons name="ellipsis-horizontal" size={24} color="#fff" />
+             </Pressable>
           </View>
 
-          <View style={styles.controls}>
-            <Pressable onPress={togglePlay} style={styles.playBtn}>
-              <Ionicons
-                name={isPlaying ? "pause" : "play"}
-                size={36}
-                color="#0c0c0e"
-              />
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent} 
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Cover en el medio */}
+            <View style={styles.coverContainer}>
+              <Image source={{ uri: currentTrack.artwork }} style={styles.fullArt} />
+            </View>
+
+            {/* Info y botón de Follow */}
+            <View style={styles.infoRow}>
+              <View style={styles.titleArea}>
+                <Text style={styles.fullTitle} numberOfLines={2}>{currentTrack.title}</Text>
+                <Text style={styles.fullArtist}>{currentTrack.artist}</Text>
+              </View>
+              <Pressable 
+                style={[styles.followBtn, isFollowing && styles.followingBtn]} 
+                onPress={() => setIsFollowing(!isFollowing)}
+              >
+                <Text style={styles.followText}>{isFollowing ? "Siguiendo" : "Seguir"}</Text>
+              </Pressable>
+            </View>
+
+            {/* Progress Bar simulada (reemplázala por tu ProgressBar real) */}
+            <View style={styles.barTrack}>
+              <View style={[styles.barFill, { width: `${progress * 100}%` }]} />
+            </View>
+
+            {/* Controles */}
+            <View style={styles.controls}>
+              <Ionicons name="play-back" size={36} color="#fff" />
+              <Pressable onPress={togglePlay} style={styles.playBtn}>
+                <Ionicons name={isPlaying ? "pause" : "play"} size={36} color="#0c0c0e" />
+              </Pressable>
+              <Ionicons name="play-forward" size={36} color="#fff" />
+            </View>
+
+            {/* Caja de Lyrics scrolleable abajo del progreso */}
+            <Pressable onPress={openKaraoke} style={{ marginTop: 40, marginBottom: 60 }}>
+              <LiquidGlass intensity={30} borderRadius={20} style={styles.lyricsBox}>
+                <View style={styles.lyricsHeader}>
+                  <Text style={styles.lyricsTitle}>Letras</Text>
+                  <Ionicons name="expand" size={18} color="rgba(255,255,255,0.6)" />
+                </View>
+                <Text style={styles.lyricsPreview}>
+                  {/* Aquí iría la letra sincronizada, este es el preview */}
+                  Toca aquí para ver las letras sincronizadas en pantalla completa...
+                </Text>
+              </LiquidGlass>
             </Pressable>
-          </View>
-
-          <Pressable onPress={openKaraoke}>
-            <Text style={styles.lyricsLink}>Letras</Text>
-          </Pressable>
+          </ScrollView>
         </Animated.View>
+
       </Animated.View>
     </GestureDetector>
   );
 }
 
 const styles = StyleSheet.create({
-  mini: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    height: MINI_H,
-    gap: 12,
-  },
-  miniArt: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    backgroundColor: "#1c1c1e",
-  },
+  mini: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, height: MINI_H, gap: 12 },
+  miniArt: { width: 44, height: 44, borderRadius: 10, backgroundColor: "#1c1c1e" },
   miniMeta: { flex: 1 },
-  miniTitle: { color: "#f5f5f7", fontSize: 14, fontWeight: "600" },
-  miniArtist: { color: "rgba(245,245,247,0.5)", fontSize: 12, marginTop: 2 },
-  full: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    paddingTop: 16,
-    paddingHorizontal: 28,
-  },
-  handle: {
-    width: 36,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.25)",
-    marginBottom: 24,
-  },
-  fullArt: {
-    width: W * 0.72,
-    height: W * 0.72,
-    borderRadius: 12,
-    backgroundColor: "#1c1c1e",
-    marginTop: 24,
-  },
-  fullTitle: {
-    color: "#f5f5f7",
-    fontSize: 22,
-    fontWeight: "700",
-    marginTop: 28,
-    textAlign: "center",
-  },
-  fullArtist: {
-    color: "rgba(245,245,247,0.55)",
-    fontSize: 16,
-    marginTop: 6,
-  },
-  barTrack: {
-    width: "100%",
-    height: 3,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 2,
-    marginTop: 32,
-    overflow: "hidden",
-  },
-  barFill: {
-    height: "100%",
-    backgroundColor: "#f5f5f7",
-  },
-  controls: { marginTop: 28 },
-  playBtn: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#f5f5f7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  lyricsLink: {
-    color: "rgba(245,245,247,0.55)",
-    marginTop: 24,
-    fontSize: 15,
-    fontWeight: "500",
-  },
+  miniTitle: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  miniPlayBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
+  
+  full: { ...StyleSheet.absoluteFillObject, paddingTop: 40 },
+  topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 24, marginBottom: 20 },
+  handle: { width: 40, height: 5, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.3)" },
+  
+  scrollContent: { paddingHorizontal: 28, paddingBottom: 60 },
+  coverContainer: { width: "100%", aspectRatio: 1, marginTop: 10, marginBottom: 30, shadowColor: "#000", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.5, shadowRadius: 24 },
+  fullArt: { width: "100%", height: "100%", borderRadius: 16, backgroundColor: "#1c1c1e" },
+  
+  infoRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 30 },
+  titleArea: { flex: 1, paddingRight: 16 },
+  fullTitle: { color: "#fff", fontSize: 24, fontWeight: "800", letterSpacing: -0.5 },
+  fullArtist: { color: "rgba(255,255,255,0.6)", fontSize: 18, fontWeight: "500", marginTop: 4 },
+  
+  followBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.4)" },
+  followingBtn: { backgroundColor: "rgba(255,255,255,0.15)", borderColor: "transparent" },
+  followText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  
+  barTrack: { width: "100%", height: 6, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 3, overflow: "hidden" },
+  barFill: { height: "100%", backgroundColor: "#fff", borderRadius: 3 },
+  
+  controls: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 40, marginTop: 40 },
+  playBtn: { width: 76, height: 76, borderRadius: 38, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
+  
+  lyricsBox: { width: "100%", padding: 20 },
+  lyricsHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  lyricsTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  lyricsPreview: { color: "rgba(255,255,255,0.7)", fontSize: 20, fontWeight: "600", lineHeight: 28 },
 });
