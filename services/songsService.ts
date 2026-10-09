@@ -83,7 +83,7 @@ export class SongsService {
       .map(mapSong);
   }
 
-  static async searchLocal(query: string, catalog: Track[]): Promise<Track[]> {
+  static searchLocal(query: string, catalog: Track[]): Track[] {
     const q = query.trim().toLowerCase();
     if (!q) return catalog;
     return catalog.filter(
