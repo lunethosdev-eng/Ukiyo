@@ -1,19 +1,25 @@
-// app/(auth)/login.tsx
 import React, { useState } from "react";
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { useRouter } from "expo-router";
-import { AuroraBackground } from "@/components/liquid/AuroraBackground";
-import { LiquidGlassCard } from "@/components/liquid/LiquidGlassCard";
-import { GlassInput } from "@/components/ui/GlassInput";
-import { LiquidButton } from "@/components/liquid/LiquidButton";
+import { useAuth } from "@/context/AuthContext";
+import { LiquidGlass } from "@/components/liquid/LiquidGlass";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = () => {
-    // TODO: integrate real auth (Supabase)
+  const onSubmit = async () => {
+    await login(email.trim(), password);
     router.replace("/(tabs)");
   };
 
@@ -22,63 +28,57 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <AuroraBackground />
-      <View style={styles.content}>
-        <Text style={styles.title}>Bienvenido</Text>
-        <Text style={styles.subtitle}>Inicia sesión en Ukiyo</Text>
-
-        <LiquidGlassCard style={styles.card}>
-          <GlassInput
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-          />
-          <GlassInput
-            placeholder="Contraseña"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-          <LiquidButton title="Entrar" onPress={handleLogin} />
-        </LiquidGlassCard>
-
-        <Text
-          style={styles.link}
-          onPress={() => router.push("/(auth)/register")}
-        >
-          Crear cuenta nueva
-        </Text>
-      </View>
+      <Text style={styles.title}>Iniciar sesión</Text>
+      <LiquidGlass borderRadius={12} style={styles.field}>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          placeholderTextColor="rgba(255,255,255,0.35)"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+      </LiquidGlass>
+      <LiquidGlass borderRadius={12} style={styles.field}>
+        <TextInput
+          style={styles.input}
+          placeholder="Contraseña"
+          placeholderTextColor="rgba(255,255,255,0.35)"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+      </LiquidGlass>
+      <Pressable style={styles.btn} onPress={onSubmit}>
+        <Text style={styles.btnText}>Entrar</Text>
+      </Pressable>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0A0618" },
-  content: {
+  container: {
     flex: 1,
+    backgroundColor: "#000",
     justifyContent: "center",
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
   },
   title: {
     color: "#fff",
-    fontSize: 34,
-    fontWeight: "800",
+    fontSize: 28,
+    fontWeight: "700",
+    marginBottom: 24,
     textAlign: "center",
   },
-  subtitle: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 32,
-    marginTop: 6,
+  field: { marginBottom: 12 },
+  input: { height: 48, paddingHorizontal: 16, color: "#fff", fontSize: 16 },
+  btn: {
+    backgroundColor: "#fff",
+    borderRadius: 999,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 16,
   },
-  card: { padding: 20 },
-  link: {
-    color: "rgba(255,255,255,0.5)",
-    textAlign: "center",
-    marginTop: 24,
-    fontSize: 15,
-  },
+  btnText: { color: "#000", fontWeight: "700", fontSize: 16 },
 });
