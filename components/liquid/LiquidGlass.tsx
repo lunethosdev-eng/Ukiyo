@@ -14,38 +14,38 @@ interface Props {
 export function LiquidGlass({
   children,
   style,
-  intensity = 35, // Menos opaco, más "líquido"
+  intensity = 45,
   borderRadius = 24,
   tint = "dark",
 }: Props) {
   return (
     <View style={[styles.wrap, { borderRadius }, style]}>
-      {/* Fondo de desenfoque base */}
+      {/* Fondo nativo optimizado */}
       <BlurView
         intensity={intensity}
         tint={tint}
-        style={[StyleSheet.absoluteFill, { borderRadius }]}
+        style={StyleSheet.absoluteFill}
       />
       
-      {/* Capa sutil de tinte para asimilar el material de iOS */}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.03)" }]} />
+      {/* Tinte Apple UI Glass */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255,255,255,0.06)" }]} />
 
-      {/* Reflejo asimétrico del cristal (Luz arriba izquierda, sombra abajo derecha) */}
+      {/* Reflejo biselado tridimensional del cristal */}
       <LinearGradient
         colors={[
-          "rgba(255,255,255,0.4)",  // Brillo fuerte superior
-          "rgba(255,255,255,0.0)",  // Transparencia en medio
-          "rgba(255,255,255,0.05)", // Ligero reflejo inferior
+          "rgba(255,255,255,0.45)",
+          "rgba(255,255,255,0.0)",
+          "rgba(255,255,255,0.08)",
         ]}
-        locations={[0, 0.4, 1]}
+        locations={[0, 0.45, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[
           StyleSheet.absoluteFill,
           {
             borderRadius,
-            borderWidth: 1.5,
-            borderColor: "rgba(255,255,255,0.15)",
+            borderWidth: 1.2,
+            borderColor: "rgba(255,255,255,0.18)",
           },
         ]}
         pointerEvents="none"
@@ -57,5 +57,5 @@ export function LiquidGlass({
 
 const styles = StyleSheet.create({
   wrap: { overflow: "hidden", backgroundColor: "transparent" },
-  content: { zIndex: 1 },
+  content: { zIndex: 1, width: "100%", height: "100%" },
 });
