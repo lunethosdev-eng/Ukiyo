@@ -1,60 +1,59 @@
 import React from "react";
-import { View, StyleSheet, ViewStyle, StyleProp } from "react-native";
+import { View, StyleSheet, ViewStyle, StyleProp, Platform } from "react-native";
 import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
 
 interface Props {
   children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   intensity?: number;
   borderRadius?: number;
-  tint?: "dark" | "light" | "default";
+  tint?: "dark" | "light" | "default" | "systemMaterialDark";
 }
 
-/** Liquid Glass real: blur nativo + borde reflectante fino, sin caja opaca detrás */
+/**
+ * Liquid Glass real (estilo Apple):
+ * - BlurView nativo
+ * - Borde hairline semi-transparente
+ * - Sin gradientes de color ni caja opaca detrás
+ */
 export function LiquidGlass({
   children,
   style,
-  intensity = 55,
-  borderRadius = 24,
+  intensity = 64,
+  borderRadius = 20,
   tint = "dark",
 }: Props) {
   return (
-    <View style={[styles.wrap, { borderRadius }, style]}>
+    <View style={[styles.outer, { borderRadius }, style]}>
       <BlurView
         intensity={intensity}
-        tint={tint}
-        style={[StyleSheet.absoluteFill, { borderRadius }]}
+        tint={tint as any}
+        experimentalBlurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
+        style={[StyleSheet.absoluteFillObject, { borderRadius }]}
       />
-      <LinearGradient
-        colors={[
-          "rgba(255,255,255,0.22)",
-          "rgba(255,255,255,0.04)",
-          "rgba(255,255,255,0.08)",
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+      <View
+        pointerEvents="none"
         style={[
-          StyleSheet.absoluteFill,
+          StyleSheet.absoluteFillObject,
           {
             borderRadius,
-            borderWidth: StyleSheet.hairlineWidth * 2,
-            borderColor: "rgba(255,255,255,0.18)",
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: "rgba(255,255,255,0.22)",
+            backgroundColor: "rgba(255,255,255,0.04)",
           },
         ]}
-        pointerEvents="none"
       />
-      <View style={styles.content}>{children}</View>
+      <View style={styles.inner}>{children}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
+  outer: {
     overflow: "hidden",
     backgroundColor: "transparent",
   },
-  content: {
+  inner: {
     zIndex: 1,
   },
 });
