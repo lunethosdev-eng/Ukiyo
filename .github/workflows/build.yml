@@ -31,10 +31,6 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
-      - name: Align Expo native packages
-        run: npx expo install --fix
-        continue-on-error: true
-
       - name: Expo Prebuild (Android)
         env:
           EXPO_NO_GIT_STATUS: 1
