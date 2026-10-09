@@ -1,4 +1,3 @@
-// app/(tabs)/library.tsx
 import React from "react";
 import {
   View,
@@ -9,47 +8,38 @@ import {
   Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LiquidGlassCard } from "@/components/liquid/LiquidGlassCard";
+import { useCatalog } from "@/context/CatalogContext";
 import { usePlayback } from "@/context/PlaybackContext";
 
 export default function LibraryScreen() {
-  const { downloadedTracks, play, isOffline } = usePlayback();
+  const { tracks } = useCatalog();
+  const { play, downloadedTracks } = usePlayback();
+
+  const data = downloadedTracks.length ? downloadedTracks : tracks;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <Text style={styles.title}>Biblioteca</Text>
-      <Text style={styles.subtitle}>
-        {isOffline
-          ? "Música descargada (modo offline)"
-          : "Tus descargas y favoritos"}
+      <Text style={styles.heading}>Biblioteca</Text>
+      <Text style={styles.sub}>
+        {downloadedTracks.length
+          ? `${downloadedTracks.length} descargadas`
+          : `${tracks.length} en catálogo`}
       </Text>
-
       <FlatList
-        data={downloadedTracks}
+        data={data}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140 }}
-        ListEmptyComponent={
-          <Text style={styles.empty}>
-            Aún no has descargado música.{"\n"}
-            Busca canciones y descárgalas para escuchar offline.
-          </Text>
-        }
         renderItem={({ item }) => (
-          <Pressable onPress={() => play(item)}>
-            <LiquidGlassCard style={styles.row}>
-              <Image source={{ uri: item.artwork }} style={styles.art} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.song} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Text style={styles.artist} numberOfLines={1}>
-                  {item.artist}
-                </Text>
-              </View>
-              {item.localUri && (
-                <Text style={styles.badge}>↓</Text>
-              )}
-            </LiquidGlassCard>
+          <Pressable style={styles.row} onPress={() => play(item)}>
+            <Image source={{ uri: item.artwork }} style={styles.art} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.title} numberOfLines={1}>
+                {item.title}
+              </Text>
+              <Text style={styles.artist} numberOfLines={1}>
+                {item.artist}
+              </Text>
+            </View>
           </Pressable>
         )}
       />
@@ -58,36 +48,27 @@ export default function LibraryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0A0618" },
-  title: {
+  container: { flex: 1, backgroundColor: "#000" },
+  heading: {
     color: "#fff",
-    fontSize: 32,
-    fontWeight: "800",
+    fontSize: 28,
+    fontWeight: "700",
     marginLeft: 20,
-    marginTop: 12,
+    marginTop: 8,
   },
-  subtitle: {
+  sub: {
     color: "rgba(255,255,255,0.45)",
     marginLeft: 20,
-    marginBottom: 16,
-    fontSize: 14,
+    marginBottom: 12,
+    fontSize: 13,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    marginBottom: 10,
-    padding: 10,
+    gap: 12,
+    paddingVertical: 8,
   },
-  art: { width: 54, height: 54, borderRadius: 10 },
-  song: { color: "#fff", fontWeight: "600", fontSize: 15 },
+  art: { width: 48, height: 48, borderRadius: 6, backgroundColor: "#1c1c1e" },
+  title: { color: "#fff", fontSize: 16, fontWeight: "500" },
   artist: { color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 2 },
-  badge: { color: "#A855F7", fontSize: 18, fontWeight: "700" },
-  empty: {
-    color: "rgba(255,255,255,0.4)",
-    textAlign: "center",
-    marginTop: 60,
-    lineHeight: 22,
-    paddingHorizontal: 32,
-  },
 });
