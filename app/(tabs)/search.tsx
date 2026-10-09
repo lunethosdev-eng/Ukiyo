@@ -102,7 +102,7 @@ export default function SearchScreen() {
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140 }}
         ListEmptyComponent={!searching ? <Text style={styles.empty}>{query.length > 1 ? "Sin resultados" : "Busca algo para empezar"}</Text> : null}
         renderItem={({ item }) => (
-          <Pressable style={styles.row} onPress={() => item.url && play(item)}>
+          <Pressable style={styles.row} onPress={() => item.url && play(item, data)}>
             {item.artwork ? <Image source={{ uri: item.artwork }} style={styles.art} /> : <View style={[styles.art, styles.artPh]} />}
             <View style={{ flex: 1 }}>
               <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
