@@ -14,6 +14,7 @@ function TabBg() {
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  
   return (
     <Tabs
       screenOptions={{
