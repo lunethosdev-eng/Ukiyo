@@ -1,7 +1,7 @@
 // services/sekiApi.ts
 import { Config } from "@/constants/Config";
 
-const TIMEOUT_MS = 240_000; // 4 minutes strict timeout (matches OkHttp)
+const TIMEOUT_MS = 240_000; // 4 minutos
 
 export class SekiApiService {
   private static async request<T>(
@@ -18,6 +18,8 @@ export class SekiApiService {
         headers: {
           Accept: "application/json",
           "X-API-Key": Config.SEKI_API_KEY,
+          // localtunnel a veces muestra página de aviso; este header ayuda a saltarla
+          "Bypass-Tunnel-Reminder": "true",
           ...options.headers,
         },
       });
