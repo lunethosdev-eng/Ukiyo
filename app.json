@@ -31,7 +31,6 @@
     },
     "plugins": [
       "expo-router",
-      "expo-blur",
       [
         "expo-av",
         {
