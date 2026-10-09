@@ -80,6 +80,7 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const play = useCallback(async (track: Track, newQueue?: Track[]) => {
     if (newQueue) setQueue(newQueue);
     else if (queue.length === 0) setQueue([track]);
+    else if (!queue.some((item) => item.id === track.id)) setQueue((prev) => [...prev, track]);
 
     if (soundRef.current) {
       await soundRef.current.unloadAsync();
