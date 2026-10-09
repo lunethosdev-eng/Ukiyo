@@ -26,7 +26,7 @@ export default function LibraryScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140 }}
         renderItem={({ item }) => (
-          <Pressable style={styles.row} onPress={() => play(item)}>
+          <Pressable style={styles.row} onPress={() => play(item, data)}>
             <Image source={{ uri: item.artwork }} style={styles.art} />
             <View style={{ flex: 1 }}>
               <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
