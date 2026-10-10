@@ -1,146 +1,146 @@
-import React, { useEffect } from "react";
-import { View, Text, StyleSheet, Pressable, Image, Dimensions } from "react-native";
+import React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Image,
+  Share,
+  Alert,
+  Dimensions,
+} from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withTiming,
   runOnJS,
 } from "react-native-reanimated";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LiquidGlass } from "@/components/liquid/LiquidGlass";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Track } from "@/services/songsService";
+import { usePlayback } from "@/context/PlaybackContext";
 
 const { height: H } = Dimensions.get("window");
 
-interface ActionSheetProps {
-  isVisible: boolean;
+interface Props {
+  visible: boolean;
+  track: Track | null;
   onClose: () => void;
-  track: { title: string; artist: string; artwork: string } | null;
 }
 
-export function ActionSheet({ isVisible, onClose, track }: ActionSheetProps) {
+export function ActionSheet({ visible, track, onClose }: Props) {
   const insets = useSafeAreaInsets();
+  const { downloadTrack } = usePlayback();
   const translateY = useSharedValue(H);
   const opacity = useSharedValue(0);
+  const isVisible = visible;
 
-  // Animar entrada y salida
-  useEffect(() => {
-    if (isVisible) {
-      opacity.value = withTiming(1, { duration: 250 });
+  React.useEffect(() => {
+    if (visible) {
+      opacity.value = withSpring(1);
       translateY.value = withSpring(0, { damping: 18, stiffness: 200 });
     } else {
-      opacity.value = withTiming(0, { duration: 250 });
+      opacity.value = withSpring(0);
       translateY.value = withSpring(H, { damping: 18, stiffness: 200 });
     }
-  }, [isVisible]);
+  }, [visible]);
 
-  // Gestos para arrastrar y cerrar
   const pan = Gesture.Pan()
     .onChange((e) => {
-      if (e.translationY > 0) {
-        translateY.value = e.translationY;
-      }
+      if (e.translationY > 0) translateY.value = e.translationY;
     })
     .onEnd((e) => {
       if (e.translationY > 100 || e.velocityY > 500) {
-        translateY.value = withSpring(H, { damping: 18, stiffness: 200 }, () => {
-          runOnJS(onClose)();
-        });
+        translateY.value = withSpring(H, {}, () => runOnJS(onClose)());
       } else {
-        translateY.value = withSpring(0, { damping: 18, stiffness: 200 });
+        translateY.value = withSpring(0);
       }
     });
 
-  const animatedSheetStyle = useAnimatedStyle(() => ({
+  const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
-
-  const animatedBackdropStyle = useAnimatedStyle(() => ({
+  const backdropStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    pointerEvents: isVisible ? "auto" : "none",
+    pointerEvents: isVisible ? ("auto" as const) : ("none" as const),
   }));
 
-  if (!track && isVisible) return null;
+  const onShare = async () => {
+    if (!track) return;
+    try {
+      await Share.share({
+        message: `Escucha "${track.title}" de ${track.artist} en Ukiyo`,
+        url: track.url,
+      });
+    } catch {}
+    onClose();
+  };
+
+  const onDownload = async () => {
+    if (!track) return;
+    try {
+      await downloadTrack(track);
+      Alert.alert("Descargada", `"${track.title}" guardada offline.`);
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "No se pudo descargar");
+    }
+    onClose();
+  };
+
+  const onPlaylist = () => {
+    Alert.alert("Playlists", "Pronto podrás agregar a playlists desde aquí.");
+    onClose();
+  };
+
+  const onArtist = () => {
+    Alert.alert(track?.artist || "Artista", "Perfil de artista próximamente.");
+    onClose();
+  };
+
+  if (!track && !visible) return null;
+
+  const items = [
+    { icon: "add-circle-outline" as const, label: "Agregar a Playlist", onPress: onPlaylist },
+    { icon: "download-outline" as const, label: "Descargar", onPress: onDownload },
+    { icon: "share-outline" as const, label: "Compartir", onPress: onShare },
+    { icon: "person-outline" as const, label: "Ver Artista", onPress: onArtist },
+  ];
 
   return (
     <>
-      {/* Fondo oscuro al abrir el menú */}
-      <Animated.View style={[styles.backdrop, animatedBackdropStyle]}>
+      <Animated.View style={[styles.backdrop, backdropStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
-
-      {/* Contenedor del menú arrastrable */}
       <GestureDetector gesture={pan}>
         <Animated.View
-          style={[
-            styles.sheetContainer,
-            animatedSheetStyle,
-            { paddingBottom: insets.bottom + 20 },
-          ]}
+          style={[styles.sheet, sheetStyle, { paddingBottom: insets.bottom + 16 }]}
         >
           <LiquidGlass intensity={70} borderRadius={28} style={StyleSheet.absoluteFill} />
-
-          {/* Indicador de arrastre */}
-          <View style={styles.handleContainer}>
-            <View style={styles.handle} />
-          </View>
-
-          {/* Cabecera de la canción */}
+          <View style={styles.handle} />
           <View style={styles.header}>
-            <Image source={{ uri: track?.artwork }} style={styles.headerArt} />
-            <View style={styles.headerInfo}>
-              <Text style={styles.headerTitle} numberOfLines={1}>
+            {!!track?.artwork && (
+              <Image source={{ uri: track.artwork }} style={styles.art} />
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.title} numberOfLines={1}>
                 {track?.title}
               </Text>
-              <Text style={styles.headerArtist} numberOfLines={1}>
+              <Text style={styles.artist} numberOfLines={1}>
                 {track?.artist}
               </Text>
             </View>
           </View>
-
-          <View style={styles.divider} />
-
-          {/* Lista de Opciones */}
-          <View style={styles.optionsList}>
-            <ActionItem 
-              icon="add-circle-outline" 
-              label="Agregar a Playlist" 
-              onPress={() => { alert("Agregado a playlist"); onClose(); }} 
-            />
-            <ActionItem 
-              icon="arrow-down-circle-outline" 
-              label="Descargar" 
-              onPress={() => { alert("Descargando..."); onClose(); }} 
-            />
-            <ActionItem 
-              icon="share-outline" 
-              label="Compartir" 
-              onPress={() => { alert("Abriendo opciones de compartir"); onClose(); }} 
-            />
-            <ActionItem 
-              icon="person-circle-outline" 
-              label="Ver Artista" 
-              onPress={() => { alert("Navegando al artista"); onClose(); }} 
-            />
-          </View>
+          {items.map((it) => (
+            <Pressable key={it.label} style={styles.row} onPress={it.onPress}>
+              <Ionicons name={it.icon} size={24} color="#fff" />
+              <Text style={styles.rowText}>{it.label}</Text>
+            </Pressable>
+          ))}
         </Animated.View>
       </GestureDetector>
     </>
-  );
-}
-
-// Componente individual para cada opción del menú
-function ActionItem({ icon, label, onPress }: { icon: any; label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      style={({ pressed }) => [styles.actionItem, pressed && styles.actionItemPressed]}
-      onPress={onPress}
-    >
-      <Ionicons name={icon} size={24} color="#fff" style={styles.actionIcon} />
-      <Text style={styles.actionLabel}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -150,74 +150,41 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     zIndex: 100,
   },
-  sheetContainer: {
+  sheet: {
     position: "absolute",
+    left: 0,
+    right: 0,
     bottom: 0,
-    left: 8,
-    right: 8,
     zIndex: 101,
-  },
-  handleContainer: {
-    alignItems: "center",
-    paddingVertical: 12,
+    paddingTop: 8,
+    overflow: "hidden",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
   },
   handle: {
+    alignSelf: "center",
     width: 40,
     height: 5,
     borderRadius: 3,
     backgroundColor: "rgba(255,255,255,0.3)",
+    marginBottom: 12,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    marginBottom: 12,
   },
-  headerArt: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
-    backgroundColor: "#2c2c2e",
-  },
-  headerInfo: {
-    flex: 1,
-    marginLeft: 14,
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  headerArtist: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 15,
-    marginTop: 2,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    marginHorizontal: 20,
-    marginBottom: 10,
-  },
-  optionsList: {
-    paddingHorizontal: 10,
-  },
-  actionItem: {
+  art: { width: 48, height: 48, borderRadius: 8, backgroundColor: "#222" },
+  title: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  artist: { color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 2 },
+  row: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 16,
+    paddingHorizontal: 24,
     paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
   },
-  actionItemPressed: {
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-  actionIcon: {
-    marginRight: 16,
-  },
-  actionLabel: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "500",
-  },
+  rowText: { color: "#fff", fontSize: 16, fontWeight: "500" },
 });
