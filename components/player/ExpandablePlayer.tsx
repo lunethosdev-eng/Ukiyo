@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { usePlayback } from "@/context/PlaybackContext";
+import { fetchLyrics, lyricsFromTrackText } from "@/services/lyricsService";
 import { LiquidGlass } from "@/components/liquid/LiquidGlass";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ActionSheet } from "./ActionSheet";
@@ -171,7 +172,7 @@ export function ExpandablePlayer() {
                     <Ionicons name="expand" size={18} color="rgba(255,255,255,0.6)" />
                   </View>
                   <Text style={styles.lyricsPreview}>
-                    Toca aquí para ver las letras sincronizadas en pantalla completa...
+                    {lyricsPreview || "Toca aquí para ver las letras sincronizadas…"}
                   </Text>
                 </LiquidGlass>
               </Pressable>
@@ -193,7 +194,7 @@ const styles = StyleSheet.create({
   miniTitle: { color: "#fff", fontSize: 15, fontWeight: "600" },
   miniPlayBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
   
-  full: { ...StyleSheet.absoluteFillObject, paddingTop: 40 },
+  full: { ...StyleSheet.absoluteFillObject, paddingTop: 0 },
   topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 24, marginBottom: 20 },
   handle: { width: 40, height: 5, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.3)" },
   
