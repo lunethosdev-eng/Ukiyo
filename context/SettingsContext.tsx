@@ -93,7 +93,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
 export const useSettings = () => {
   const ctx = useContext(SettingsContext);
-  if (!ctx) throw new Error("useSettings inside SettingsProvider");
+  if (!ctx) {
+    // Evita crash en release si el árbol de providers falla parcialmente
+    return {
+      settings: DEFAULTS,
+      set: async () => {},
+      setFlag: async () => {},
+    };
+  }
   return ctx;
 };
 
