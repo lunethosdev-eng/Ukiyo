@@ -1,23 +1,24 @@
 /**
- * Kokoro Supabase = config global, anuncios, push tokens (conector Kokoro).
- * CATALOG_* = catálogo de canciones (si usas otra instancia, cámbialo aquí).
+ * Kokoro Supabase  → config remota, anuncios, push (conector Kokoro)
+ * Ukiyo server     → catálogo de canciones (conector ukiyo server)
  */
 export const Config = {
-  // Kokoro (Ukiyo admin / config remota)
+  // Kokoro — admin / config global
   SUPABASE_URL: "https://ajbmpgnzkgtcmulocftd.supabase.co",
   SUPABASE_PUBLISHABLE_KEY:
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqYm1wZ256a2d0Y211bG9jZnRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzNDU2MjksImV4cCI6MjEwNTkyMTYyOX0.twsBnT9WBBILyXFuoQh7viI578yoNbeQztKHsr8DB8k",
 
-  // Catálogo (misma instancia Kokoro; tabla tracks)
-  CATALOG_URL: "https://ajbmpgnzkgtcmulocftd.supabase.co",
+  // Ukiyo server — canciones
+  CATALOG_URL: "https://esjoifsjljvymttinyhj.supabase.co",
   CATALOG_KEY:
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFqYm1wZ256a2d0Y211bG9jZnRkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzNDU2MjksImV4cCI6MjEwNTkyMTYyOX0.twsBnT9WBBILyXFuoQh7viI578yoNbeQztKHsr8DB8k",
-  SONGS_TABLE: "tracks",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzam9pZnNqbGp2eW10dGlueWhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEwMzYyMTAsImV4cCI6MjEwNjYxMjIxMH0.GKA3KyoMElVwLUQlL2ad82IPjRmwKmMJEGPTUNwbuVQ",
+  SONGS_TABLE: "songs",
   SUPABASE_BUCKET: "audio",
 
   SEKI_API_URL: "https://tricky-dingo-37.loca.lt",
   SEKI_API_KEY: "kokoro-seki-2026",
   LRCLIB_BASE: "https://lrclib.net/api/get",
+  LRCLIB_SEARCH: "https://lrclib.net/api/search",
   ADMIN_PIN: "ukiyo2026",
 } as const;
 
