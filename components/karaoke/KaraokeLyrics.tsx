@@ -17,7 +17,7 @@ import Animated, {
   interpolateColor,
 } from "react-native-reanimated";
 import { usePlayback } from "@/context/PlaybackContext";
-import { fetchLyrics, LyricLine } from "@/services/lyricsService";
+import { fetchLyrics, lyricsFromTrackText, LyricLine } from "@/services/lyricsService";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -40,30 +40,28 @@ export function KaraokeLyrics() {
   const [lines, setLines] = useState<LyricLine[]>([]);
   const [activeLineIndex, setActiveLineIndex] = useState(0);
 
-  // Load lyrics when track changes
+    // Load lyrics: 1) DB del track  2) LRCLIB API
   useEffect(() => {
     if (!currentTrack) return;
+    let cancelled = false;
     (async () => {
+      // Primero letras guardadas en ukiyo server (LRC o texto)
+      const fromDb = lyricsFromTrackText(currentTrack.lyricsText);
+      if (fromDb?.lines?.length) {
+        if (!cancelled) setLines(fromDb.lines);
+        return;
+      }
       const data = await fetchLyrics(
         currentTrack.title,
         currentTrack.artist,
         currentTrack.album,
         currentTrack.duration
       );
-      if (data?.lines?.length) {
-        setLines(data.lines);
-      } else if (currentTrack.lyricsText) {
-        // Accept plain text lyrics returned by /api/search as a useful fallback.
-        const fallback = currentTrack.lyricsText
-          .split(/\\r?\\n/)
-          .map((text) => text.trim())
-          .filter(Boolean)
-          .map((text, index) => ({ time: index * 4, text }));
-        setLines(fallback);
-      } else {
-        setLines([]);
-      }
+      if (cancelled) return;
+      if (data?.lines?.length) setLines(data.lines);
+      else setLines([]);
     })();
+    return () => { cancelled = true; };
   }, [currentTrack?.id]);
 
   // Find current line based on position * SPEED_FACTOR
