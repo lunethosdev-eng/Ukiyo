@@ -9,7 +9,8 @@ import { CatalogProvider } from "@/context/CatalogContext";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { ExpandablePlayer } from "@/components/player/ExpandablePlayer";
 import { loadRemoteConfig } from "@/services/remoteConfig";
-import { IS_ADMIN_APP } from "@/constants/AppVariant";
+import { UpdateModal } from "@/components/ui/UpdateModal";
+import { getIsAdminApp } from "@/constants/AppVariant";
 
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -70,7 +71,7 @@ function Bootstrap({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   // APK Admin: solo panel de administración
-  if (IS_ADMIN_APP) {
+  if (getIsAdminApp()) {
     return (
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
         <ErrorBoundary>
@@ -114,6 +115,7 @@ export default function RootLayout() {
                     <Stack.Screen name="settings/index" />
                   </Stack>
                   <ExpandablePlayer />
+                  <UpdateModal />
                 </PlaybackProvider>
               </CatalogProvider>
             </SettingsProvider>
