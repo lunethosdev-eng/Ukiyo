@@ -21,22 +21,30 @@
         "INTERNET",
         "ACCESS_NETWORK_STATE",
         "WRITE_EXTERNAL_STORAGE",
-        "READ_EXTERNAL_STORAGE"
+        "READ_EXTERNAL_STORAGE",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "WAKE_LOCK"
       ]
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.kokorofy.ukiyo"
+      "bundleIdentifier": "com.kokorofy.ukiyo",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      }
     },
     "plugins": [
       "expo-router",
+      "expo-font",
       [
         "expo-av",
         {
           "microphonePermission": false
         }
-      ],
-      "expo-font"
+      ]
     ],
     "experiments": {
       "typedRoutes": true
