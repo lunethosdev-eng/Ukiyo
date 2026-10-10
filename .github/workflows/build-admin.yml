@@ -1,0 +1,43 @@
+name: Build Ukiyo Admin APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "app.admin.json"
+      - "app/admin/**"
+      - ".github/workflows/build-admin.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install dependencies
+        run: npm ci || npm install
+      - name: Use admin app.json
+        run: |
+          cp app.admin.json app.json
+          # Layout admin mínimo
+          mkdir -p app
+      - name: Expo Prebuild
+        env:
+          EXPO_NO_GIT_STATUS: "1"
+          EXPO_PUBLIC_IS_ADMIN: "1"
+        run: npx expo prebuild --platform android --clean
+      - name: Build Release APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Upload Admin APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ukiyo-admin-release
+          path: android/app/build/outputs/apk/release/*.apk
