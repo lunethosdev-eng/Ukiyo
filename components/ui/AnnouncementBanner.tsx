@@ -1,6 +1,18 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, Image, StyleSheet, Pressable, Modal, ScrollView } from "react-native";
-import { fetchAnnouncements, Announcement } from "@/services/remoteConfig";
+import React, { useEffect, useState, useCallback } from "react";
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  Pressable,
+  Modal,
+  ScrollView,
+} from "react-native";
+import {
+  fetchAnnouncements,
+  loadRemoteConfig,
+  Announcement,
+} from "@/services/remoteConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SEEN_KEY = "@ukiyo/ann_seen";
@@ -9,19 +21,25 @@ export function AnnouncementBanner() {
   const [ann, setAnn] = useState<Announcement | null>(null);
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const list = await fetchAnnouncements();
-        if (!list.length) return;
-        const latest = list[0];
-        const seen = await AsyncStorage.getItem(SEEN_KEY);
-        if (seen === latest.id) return;
-        setAnn(latest);
-        setOpen(true);
-      } catch {}
-    })();
+  const check = useCallback(async () => {
+    try {
+      // refresca URL SEKI + config
+      await loadRemoteConfig();
+      const list = await fetchAnnouncements();
+      if (!list.length) return;
+      const latest = list[0];
+      const seen = await AsyncStorage.getItem(SEEN_KEY);
+      if (seen === latest.id) return;
+      setAnn(latest);
+      setOpen(true);
+    } catch {}
   }, []);
+
+  useEffect(() => {
+    check();
+    const id = setInterval(check, 30_000);
+    return () => clearInterval(id);
+  }, [check]);
 
   const dismiss = async () => {
     if (ann) await AsyncStorage.setItem(SEEN_KEY, ann.id);
@@ -36,7 +54,11 @@ export function AnnouncementBanner() {
         <View style={styles.card}>
           <ScrollView>
             {!!ann.image_url && (
-              <Image source={{ uri: ann.image_url }} style={styles.img} resizeMode="cover" />
+              <Image
+                source={{ uri: ann.image_url }}
+                style={styles.img}
+                resizeMode="cover"
+              />
             )}
             <Text style={styles.title}>{ann.title}</Text>
             {!!ann.body && <Text style={styles.body}>{ann.body}</Text>}
