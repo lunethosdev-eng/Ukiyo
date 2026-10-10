@@ -130,7 +130,7 @@ export function ExpandablePlayer() {
                </Pressable>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={true} nestedScrollEnabled keyboardShouldPersistTaps="handled">
               <View style={styles.coverContainer}>
                 <Image source={{ uri: currentTrack.artwork }} style={styles.fullArt} />
               </View>
@@ -164,7 +164,7 @@ export function ExpandablePlayer() {
                 </Pressable>
               </View>
 
-              <Pressable onPress={openKaraoke} style={{ marginTop: 40, marginBottom: 60 }}>
+              <Pressable onPress={openKaraoke} accessibilityRole="button" accessibilityLabel="Abrir letras sincronizadas" style={{ marginTop: 40, marginBottom: 60 }}>
                 <LiquidGlass intensity={30} borderRadius={20} style={styles.lyricsBox}>
                   <View style={styles.lyricsHeader}>
                     <Text style={styles.lyricsTitle}>Letras</Text>
