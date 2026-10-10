@@ -1,4 +1,4 @@
-import { Config } from "@/constants/Config";
+import { RuntimeConfig } from "@/constants/Config";
 
 const TIMEOUT_MS = 240_000;
 
@@ -10,12 +10,13 @@ export class SekiApiService {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const response = await fetch(`${Config.SEKI_API_URL}${endpoint}`, {
+      const base = RuntimeConfig.SEKI_API_URL.replace(/\/$/, "");
+      const response = await fetch(`${base}${endpoint}`, {
         ...options,
         signal: controller.signal,
         headers: {
           Accept: "application/json",
-          "X-API-Key": Config.SEKI_API_KEY,
+          "X-API-Key": RuntimeConfig.SEKI_API_KEY,
           "Bypass-Tunnel-Reminder": "true",
           ...options.headers,
         },
