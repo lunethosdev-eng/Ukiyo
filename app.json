@@ -7,6 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "scheme": "ukiyo",
+    "newArchEnabled": false,
     "splash": {
       "backgroundColor": "#000000",
       "resizeMode": "contain"
