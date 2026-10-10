@@ -1,10 +1,10 @@
 import { Redirect } from "expo-router";
 import { View } from "react-native";
-import { IS_ADMIN_APP } from "@/constants/AppVariant";
+import { getIsAdminApp } from "@/constants/AppVariant";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Index() {
-  if (IS_ADMIN_APP) {
+  if (getIsAdminApp()) {
     return <Redirect href="/admin" />;
   }
   return <UserIndex />;
