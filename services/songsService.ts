@@ -4,14 +4,13 @@ export interface Song {
   id: string;
   title: string;
   artist: string;
-  album?: string;
-  duration_seconds?: number;
+  album?: string | null;
+  duration_seconds?: number | null;
   audio_url?: string | null;
-  audio_path?: string | null;
   cover_url?: string | null;
   animated_cover_url?: string | null;
   lyrics_text?: string | null;
-  lyrics?: unknown;
+  lyrics_url?: string | null;
   genre?: string | null;
   release_year?: number | null;
   youtube_id?: string | null;
@@ -27,37 +26,23 @@ export interface Track {
   duration?: number;
   lyricsText?: string;
   genre?: string;
+  youtubeId?: string;
 }
 
-const PAGE = 1000;
-
-function resolveAudioUrl(s: Song): string {
-  if (s.audio_url) return s.audio_url;
-  if (s.audio_path) {
-    // path relativo en storage
-    return `${Config.CATALOG_URL}/storage/v1/object/public/${Config.SUPABASE_BUCKET}/${s.audio_path}`;
-  }
-  return "";
-}
+const PAGE = 500;
 
 function mapSong(s: Song): Track {
-  const lyricsText =
-    s.lyrics_text ??
-    (Array.isArray(s.lyrics)
-      ? (s.lyrics as { text?: string }[]).map((l) => l.text ?? "").join("\n")
-      : undefined);
   return {
     id: s.id,
     title: s.title,
     artist: s.artist,
     album: s.album ?? undefined,
-    artwork:
-      s.cover_url ||
-      `${Config.CATALOG_URL}/storage/v1/object/public/covers/placeholder.jpg`,
-    url: resolveAudioUrl(s),
+    artwork: s.cover_url || "",
+    url: s.audio_url || "",
     duration: s.duration_seconds ?? undefined,
-    lyricsText,
+    lyricsText: s.lyrics_text ?? undefined,
     genre: s.genre ?? undefined,
+    youtubeId: s.youtube_id ?? undefined,
   };
 }
 
@@ -69,7 +54,7 @@ export class SongsService {
     while (true) {
       const to = from + PAGE - 1;
       const res = await fetch(
-        `${Config.CATALOG_URL}/rest/v1/${Config.SONGS_TABLE}?select=*&order=created_at.desc`,
+        `${Config.CATALOG_URL}/rest/v1/${Config.SONGS_TABLE}?select=id,title,artist,album,duration_seconds,audio_url,cover_url,animated_cover_url,lyrics_text,lyrics_url,genre,youtube_id&order=created_at.desc`,
         {
           headers: {
             apikey: Config.CATALOG_KEY,
@@ -82,7 +67,7 @@ export class SongsService {
       );
 
       if (!res.ok) {
-        throw new Error(`Supabase tracks HTTP ${res.status}`);
+        throw new Error(`Catálogo HTTP ${res.status}`);
       }
 
       const batch = (await res.json()) as Song[];
@@ -92,7 +77,7 @@ export class SongsService {
       from += PAGE;
     }
 
-    return all.filter((s) => resolveAudioUrl(s)).map(mapSong);
+    return all.filter((s) => !!s.audio_url).map(mapSong);
   }
 
   static searchLocal(query: string, catalog: Track[]): Track[] {
