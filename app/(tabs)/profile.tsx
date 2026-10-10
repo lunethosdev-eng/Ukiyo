@@ -1,5 +1,13 @@
 import React from "react";
-import { View, Text, StyleSheet, Image, Pressable, Switch, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  Image,
+  Switch,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
@@ -7,67 +15,51 @@ import { useSettings } from "@/context/SettingsContext";
 import { LiquidGlass } from "@/components/liquid/LiquidGlass";
 
 export default function ProfileScreen() {
-  const { user, logout, updateProfile } = useAuth();
-  const settingsContext = useSettings();
   const router = useRouter();
+  const { user, logout } = useAuth();
+  const settingsContext = useSettings();
+  const settings = settingsContext?.settings;
 
-  const isPublic = settingsContext?.settings?.publicProfile ?? true;
-  const showActivity = settingsContext?.settings?.showListeningActivity ?? true;
+  const letter = (user?.displayName || user?.email || "G").charAt(0).toUpperCase();
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
         <View style={styles.banner}>
-          {user?.bannerUri ? (
-            <Image source={{ uri: user.bannerUri }} style={StyleSheet.absoluteFill} />
-          ) : (
-            <View style={styles.bannerFallback} />
-          )}
-          <View style={styles.bannerOverlay} />
+          <View style={styles.bannerFallback} />
         </View>
 
         <View style={styles.avatarRow}>
-          {user?.photoUri ? (
-            <Image source={{ uri: user.photoUri }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPh]}>
-              <Text style={styles.avatarLetter}>
-                {(user?.nickname || user?.name || "U")[0].toUpperCase()}
-              </Text>
-            </View>
-          )}
-          <View style={{ flex: 1 }}>
-            <Text style={styles.name}>{user?.name || "Usuario"}</Text>
-            <Text style={styles.nick}>@{user?.nickname || "guest"}</Text>
+          <View style={[styles.avatar, styles.avatarPh]}>
+            <Text style={styles.avatarLetter}>{letter}</Text>
+          </View>
+          <View style={{ flex: 1, paddingBottom: 8 }}>
+            <Text style={styles.name}>{user?.displayName || "Invitado"}</Text>
+            <Text style={styles.nick}>@{user?.username || "guest"}</Text>
             {user?.isGuest && <Text style={styles.guestBadge}>Modo invitado</Text>}
           </View>
         </View>
 
-        {!!user?.bio && <Text style={styles.bio}>{user.bio}</Text>}
-
-        <LiquidGlass borderRadius={14} intensity={40} style={styles.card}>
+        <LiquidGlass borderRadius={16} intensity={40} style={styles.card}>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Perfil público</Text>
             <Switch
-              value={isPublic}
-              onValueChange={(v) => {
-                settingsContext?.set({ publicProfile: v });
-                updateProfile({ isPublic: v });
-              }}
-              trackColor={{ false: "#333", true: "#fff" }}
-              thumbColor="#000"
+              value={!!settings?.publicProfile}
+              onValueChange={(v) => settingsContext?.set({ publicProfile: v })}
+              trackColor={{ false: "#333", true: "#a78bfa" }}
+              thumbColor="#fff"
             />
           </View>
         </LiquidGlass>
 
-        <LiquidGlass borderRadius={14} intensity={40} style={styles.card}>
+        <LiquidGlass borderRadius={16} intensity={40} style={styles.card}>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Mostrar actividad</Text>
             <Switch
-              value={showActivity}
+              value={!!settings?.showListeningActivity}
               onValueChange={(v) => settingsContext?.set({ showListeningActivity: v })}
-              trackColor={{ false: "#333", true: "#fff" }}
-              thumbColor="#000"
+              trackColor={{ false: "#333", true: "#a78bfa" }}
+              thumbColor="#fff"
             />
           </View>
         </LiquidGlass>
@@ -77,10 +69,13 @@ export default function ProfileScreen() {
           <Text style={styles.chev}>›</Text>
         </Pressable>
 
-        <Pressable style={styles.logout} onPress={async () => {
-          await logout();
-          router.replace("/(auth)/welcome");
-        }}>
+        <Pressable
+          style={styles.logout}
+          onPress={async () => {
+            await logout();
+            router.replace("/(auth)/welcome");
+          }}
+        >
           <Text style={styles.logoutText}>
             {user?.isGuest ? "Salir del modo invitado" : "Cerrar sesión"}
           </Text>
@@ -92,23 +87,53 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
-  banner: { height: 140, backgroundColor: "#1c1c1e", overflow: "hidden" },
-  bannerFallback: { ...StyleSheet.absoluteFillObject, backgroundColor: "#1a1a1c" },
-  bannerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.25)" },
-  avatarRow: { flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 20, marginTop: -36, gap: 14 },
-  avatar: { width: 84, height: 84, borderRadius: 42, borderWidth: 3, borderColor: "#000", backgroundColor: "#1c1c1e" },
+  banner: { height: 100, backgroundColor: "#1c1c1e", overflow: "hidden" },
+  bannerFallback: { ...StyleSheet.absoluteFillObject, backgroundColor: "#1a1228" },
+  avatarRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    paddingHorizontal: 20,
+    marginTop: -32,
+    gap: 14,
+  },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 3,
+    borderColor: "#000",
+    backgroundColor: "#1c1c1e",
+  },
   avatarPh: { alignItems: "center", justifyContent: "center" },
-  avatarLetter: { color: "#fff", fontSize: 32, fontWeight: "600" },
-  name: { color: "#fff", fontSize: 22, fontWeight: "700" },
-  nick: { color: "rgba(255,255,255,0.5)", fontSize: 14, marginTop: 2 },
+  avatarLetter: { color: "#fff", fontSize: 28, fontWeight: "600" },
+  name: { color: "#fff", fontSize: 20, fontWeight: "700" },
+  nick: { color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 2 },
   guestBadge: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 },
-  bio: { color: "rgba(255,255,255,0.65)", paddingHorizontal: 20, marginTop: 12, fontSize: 14 },
-  card: { marginHorizontal: 16, marginTop: 16, paddingHorizontal: 16, paddingVertical: 4 },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12 },
-  rowLabel: { color: "#fff", fontSize: 16 },
-  linkCard: { marginHorizontal: 16, marginTop: 16, backgroundColor: "#1c1c1e", borderRadius: 14, paddingHorizontal: 16, paddingVertical: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  card: { marginHorizontal: 16, marginTop: 12 },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 52,
+  },
+  rowLabel: { color: "#fff", fontSize: 16, fontWeight: "500" },
+  linkCard: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
   linkText: { color: "#fff", fontSize: 16, fontWeight: "500" },
   chev: { color: "rgba(255,255,255,0.4)", fontSize: 22 },
-  logout: { marginTop: 28, alignItems: "center" },
+  logout: { marginTop: 28, alignItems: "center", marginBottom: 20 },
   logoutText: { color: "#ff453a", fontSize: 16, fontWeight: "500" },
 });
