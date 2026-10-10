@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -24,36 +24,25 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const onNickname = useCallback((t: string) => {
+    setNickname(t.replace(/\s/g, "").toLowerCase());
+  }, []);
+
   const onSubmit = async () => {
     if (!name.trim() || !nickname.trim() || !email.trim() || password.length < 4) {
-      Alert.alert("Completa todos los campos", "Nickname y nombre son obligatorios.");
+      Alert.alert("Completa todos los campos", "Nombre, nickname, email y contraseña (mín. 4).");
       return;
     }
     setBusy(true);
     try {
       await register({ name, nickname, email, password });
       router.replace("/(tabs)");
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "No se pudo registrar");
     } finally {
       setBusy(false);
     }
   };
-
-  const Field = ({
-    label,
-    ...props
-  }: { label: string } & React.ComponentProps<typeof TextInput>) => (
-    <View style={styles.fieldWrap}>
-      <Text style={styles.label}>{label}</Text>
-      <LiquidGlass borderRadius={12} intensity={36}>
-        <TextInput
-          style={styles.input}
-          placeholderTextColor="rgba(255,255,255,0.28)"
-          autoCapitalize="none"
-          {...props}
-        />
-      </LiquidGlass>
-    </View>
-  );
 
   return (
     <KeyboardAvoidingView
@@ -63,46 +52,78 @@ export default function RegisterScreen() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="none"
       >
         <Animated.Text entering={FadeInDown} style={styles.title}>
           Crear cuenta
         </Animated.Text>
         <Text style={styles.hint}>
-          Elige un nickname único. Puedes cambiar el banner y la privacidad después.
+          Elige un nickname. Luego podrás editar foto, banner y privacidad.
         </Text>
 
-        <Field label="Nombre" value={name} onChangeText={setName} placeholder="Tu nombre" autoCapitalize="words" />
-        <Field
-          label="Nickname"
-          value={nickname}
-          onChangeText={(t) => setNickname(t.replace(/\s/g, "").toLowerCase())}
-          placeholder="ukiyo_user"
-        />
-        <Field
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="tu@email.com"
-          keyboardType="email-address"
-        />
-        <Field
-          label="Contraseña"
-          value={password}
-          onChangeText={setPassword}
-          placeholder="••••••••"
-          secureTextEntry
-        />
+        <Text style={styles.label}>Nombre</Text>
+        <LiquidGlass borderRadius={14} intensity={40} style={styles.field}>
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Tu nombre"
+            placeholderTextColor="rgba(255,255,255,0.3)"
+            autoCapitalize="words"
+            autoCorrect={false}
+          />
+        </LiquidGlass>
+
+        <Text style={styles.label}>Nickname</Text>
+        <LiquidGlass borderRadius={14} intensity={40} style={styles.field}>
+          <TextInput
+            style={styles.input}
+            value={nickname}
+            onChangeText={onNickname}
+            placeholder="ukiyo_user"
+            placeholderTextColor="rgba(255,255,255,0.3)"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </LiquidGlass>
+
+        <Text style={styles.label}>Email</Text>
+        <LiquidGlass borderRadius={14} intensity={40} style={styles.field}>
+          <TextInput
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="tu@email.com"
+            placeholderTextColor="rgba(255,255,255,0.3)"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoCorrect={false}
+          />
+        </LiquidGlass>
+
+        <Text style={styles.label}>Contraseña</Text>
+        <LiquidGlass borderRadius={14} intensity={40} style={styles.field}>
+          <TextInput
+            style={styles.input}
+            value={password}
+            onChangeText={setPassword}
+            placeholder="••••••••"
+            placeholderTextColor="rgba(255,255,255,0.3)"
+            secureTextEntry
+            autoCorrect={false}
+          />
+        </LiquidGlass>
 
         <Pressable
           style={[styles.btn, busy && { opacity: 0.5 }]}
           onPress={onSubmit}
           disabled={busy}
         >
-          <Text style={styles.btnText}>Crear cuenta</Text>
+          <Text style={styles.btnText}>{busy ? "Creando…" : "Crear cuenta"}</Text>
         </Pressable>
 
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.back}>Volver</Text>
+        <Pressable onPress={() => router.back()} style={{ marginTop: 16 }}>
+          <Text style={styles.back}>Ya tengo cuenta</Text>
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -110,47 +131,25 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#0c0c0e" },
-  scroll: { padding: 24, paddingTop: 72, paddingBottom: 40 },
-  title: {
-    color: "#f5f5f7",
-    fontSize: 32,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-  },
-  hint: {
-    color: "rgba(245,245,247,0.45)",
-    marginTop: 8,
-    marginBottom: 28,
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  fieldWrap: { marginBottom: 14 },
-  label: {
-    color: "rgba(245,245,247,0.55)",
-    fontSize: 13,
-    marginBottom: 6,
-    marginLeft: 4,
-  },
+  root: { flex: 1, backgroundColor: "#000" },
+  scroll: { paddingHorizontal: 24, paddingTop: 64, paddingBottom: 40 },
+  title: { color: "#fff", fontSize: 28, fontWeight: "800", marginBottom: 8 },
+  hint: { color: "rgba(255,255,255,0.45)", fontSize: 14, marginBottom: 24, lineHeight: 20 },
+  label: { color: "rgba(255,255,255,0.55)", fontSize: 13, marginBottom: 8, marginTop: 12 },
+  field: { marginBottom: 4 },
   input: {
-    height: 48,
-    paddingHorizontal: 14,
-    color: "#f5f5f7",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    color: "#fff",
     fontSize: 16,
   },
   btn: {
-    backgroundColor: "#f5f5f7",
-    borderRadius: 14,
-    height: 52,
+    marginTop: 28,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    paddingVertical: 16,
     alignItems: "center",
-    justifyContent: "center",
-    marginTop: 12,
   },
-  btnText: { color: "#0c0c0e", fontWeight: "700", fontSize: 16 },
-  back: {
-    color: "rgba(245,245,247,0.45)",
-    textAlign: "center",
-    marginTop: 20,
-    fontSize: 15,
-  },
+  btnText: { color: "#000", fontWeight: "700", fontSize: 16 },
+  back: { color: "rgba(255,255,255,0.5)", textAlign: "center", fontSize: 14 },
 });
