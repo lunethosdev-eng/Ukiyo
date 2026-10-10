@@ -18,6 +18,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth, BadgeLevel } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { LiquidGlass } from "@/components/liquid/LiquidGlass";
+import * as ImagePicker from "expo-image-picker";
+import { submitReport } from "@/services/reportService";
 
 const BADGE_META: Record<
   BadgeLevel,
@@ -61,18 +63,49 @@ export default function ProfileScreen() {
     setEditOpen(false);
   };
 
+  const pickImage = async (kind: "photo" | "banner") => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Permiso necesario", "Activa acceso a fotos para subir banner/foto.");
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      allowsEditing: true,
+      aspect: kind === "banner" ? [16, 9] : [1, 1],
+    });
+    if (res.canceled || !res.assets?.[0]?.uri) return;
+    const uri = res.assets[0].uri;
+    if (kind === "photo") {
+      setPhotoUrl(uri);
+      await updateProfile({ photoUri: uri });
+    } else {
+      setBannerUrl(uri);
+      await updateProfile({ bannerUri: uri });
+    }
+  };
+
   const sendReport = async () => {
-    const subject = encodeURIComponent(`[Ukiyo Report] ${reportType}`);
-    const body = encodeURIComponent(
-      `Tipo: ${reportType}\nUsuario: ${user?.nickname || "guest"}\nEmail: ${user?.email || "-"}\n\n${reportMsg}`
-    );
-    const url = `mailto:lunethos.dev@gmail.com?subject=${subject}&body=${body}`;
-    try {
-      await Linking.openURL(url);
+    if (!reportMsg.trim()) {
+      Alert.alert("Escribe el problema");
+      return;
+    }
+    const r = await submitReport({
+      type: reportType,
+      message: reportMsg.trim(),
+      nickname: user?.nickname,
+      email: user?.email,
+    });
+    if (r.ok) {
+      Alert.alert("Enviado", "Tu reporte llegó al equipo. Gracias.");
       setReportOpen(false);
       setReportMsg("");
-    } catch {
-      Alert.alert("No se pudo abrir el correo", "Escríbenos a lunethos.dev@gmail.com");
+    } else {
+      Alert.alert(
+        "No se pudo enviar",
+        "Revisa conexión. También puedes escribir a lunethos.dev@gmail.com"
+      );
     }
   };
 
@@ -214,9 +247,15 @@ export default function ProfileScreen() {
             <TextInput style={styles.input} value={nick} onChangeText={setNick} autoCapitalize="none" placeholderTextColor="#666" placeholder="nickname" />
             <Text style={styles.label}>Bio</Text>
             <TextInput style={styles.input} value={bio} onChangeText={setBio} placeholderTextColor="#666" placeholder="Sobre ti" />
-            <Text style={styles.label}>URL foto</Text>
+            <Pressable style={[styles.modalBtn, { backgroundColor: "#333", marginBottom: 8 }]} onPress={() => pickImage("photo")}>
+              <Text style={styles.modalBtnText}>Subir foto desde galería</Text>
+            </Pressable>
+            <Text style={styles.label}>URL foto (opcional)</Text>
             <TextInput style={styles.input} value={photoUrl} onChangeText={setPhotoUrl} autoCapitalize="none" placeholderTextColor="#666" placeholder="https://..." />
-            <Text style={styles.label}>URL banner</Text>
+            <Pressable style={[styles.modalBtn, { backgroundColor: "#333", marginBottom: 8 }]} onPress={() => pickImage("banner")}>
+              <Text style={styles.modalBtnText}>Subir banner desde galería</Text>
+            </Pressable>
+            <Text style={styles.label}>URL banner (opcional)</Text>
             <TextInput style={styles.input} value={bannerUrl} onChangeText={setBannerUrl} autoCapitalize="none" placeholderTextColor="#666" placeholder="https://..." />
             <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
               <Pressable style={[styles.modalBtn, { backgroundColor: "#333" }]} onPress={() => setEditOpen(false)}>
