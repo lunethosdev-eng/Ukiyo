@@ -31,19 +31,52 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
     (async () => {
       try {
+        // Puede fallar si ya está inicializado (hot reload / re-mount). Lo toleramos.
         await TrackPlayer.setupPlayer({ autoHandleInterruptions: true });
+      } catch (e: any) {
+        if (!String(e?.message ?? e).includes('already been initialized')) {
+          console.warn('TrackPlayer setupPlayer:', e);
+        }
+      }
+      try {
         await TrackPlayer.updateOptions({
-          android: { appKilledPlaybackBehavior: 'continue-playback' },
-          capabilities: [Capability.Play, Capability.Pause, Capability.SkipToNext, Capability.SkipToPrevious, Capability.SeekTo],
-          compactCapabilities: [Capability.Play, Capability.Pause, Capability.SkipToNext, Capability.SkipToPrevious],
-          notificationCapabilities: [Capability.Play, Capability.Pause, Capability.SkipToNext, Capability.SkipToPrevious],
+          android: { appKilledPlaybackBehavior: 'ContinuePlayback' as any },
+          capabilities: [
+            Capability.Play,
+            Capability.Pause,
+            Capability.SkipToNext,
+            Capability.SkipToPrevious,
+            Capability.SeekTo,
+          ],
+          compactCapabilities: [
+            Capability.Play,
+            Capability.Pause,
+            Capability.SkipToNext,
+            Capability.SkipToPrevious,
+          ],
+          notificationCapabilities: [
+            Capability.Play,
+            Capability.Pause,
+            Capability.SkipToNext,
+            Capability.SkipToPrevious,
+          ],
           progressUpdateEventInterval: 1,
         });
-      } catch (e) { console.warn('TrackPlayer setup:', e); }
-      try { const raw = await AsyncStorage.getItem('@ukiyo/downloaded'); if (raw && mounted) setDownloadedTracks(JSON.parse(raw)); } catch {}
+      } catch (e) {
+        console.warn('TrackPlayer updateOptions:', e);
+      }
+      try {
+        const raw = await AsyncStorage.getItem('@ukiyo/downloaded');
+        if (raw && mounted) setDownloadedTracks(JSON.parse(raw));
+      } catch {}
     })();
-    const net = NetInfo.addEventListener(s => setIsOffline(!(s.isConnected && s.isInternetReachable)));
-    return () => { mounted = false; net(); };
+    const net = NetInfo.addEventListener((s) =>
+      setIsOffline(!(s.isConnected && s.isInternetReachable))
+    );
+    return () => {
+      mounted = false;
+      net();
+    };
   }, []);
 
   useTrackPlayerEvents([Event.PlaybackState, Event.PlaybackActiveTrackChanged, Event.PlaybackQueueEnded], async event => {
