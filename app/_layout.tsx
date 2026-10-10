@@ -2,14 +2,13 @@ import React, { Component, useEffect, useState } from "react";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
-import { View, Text, ActivityIndicator, StyleSheet, Platform } from "react-native";
+import { View, Text, ActivityIndicator, StyleSheet } from "react-native";
 import { PlaybackProvider } from "@/context/PlaybackContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { CatalogProvider } from "@/context/CatalogContext";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { ExpandablePlayer } from "@/components/player/ExpandablePlayer";
-import { loadRemoteConfig, registerPushToken } from "@/services/remoteConfig";
-import { IS_ADMIN_APP } from "@/constants/AppVariant";
+import { loadRemoteConfig } from "@/services/remoteConfig";
 
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -46,41 +45,14 @@ function Bootstrap({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         await loadRemoteConfig();
-      } catch {}
-      if (!IS_ADMIN_APP) {
-        try {
-          const Notifications = require("expo-notifications");
-          const Device = require("expo-device");
-          if (Device.isDevice) {
-            const { status: existing } = await Notifications.getPermissionsAsync();
-            let finalStatus = existing;
-            if (existing !== "granted") {
-              const { status } = await Notifications.requestPermissionsAsync();
-              finalStatus = status;
-            }
-            if (finalStatus === "granted") {
-              const tokenData = await Notifications.getExpoPushTokenAsync();
-              if (tokenData?.data) {
-                await registerPushToken(tokenData.data, Platform.OS);
-              }
-            }
-            Notifications.setNotificationHandler({
-              handleNotification: async () => ({
-                shouldShowAlert: true,
-                shouldPlaySound: true,
-                shouldSetBadge: false,
-              }),
-            });
-          }
-        } catch (e) {
-          console.warn("Notifications setup skipped:", e);
-        }
+      } catch {
+        /* offline / sin config: continuar */
       }
       if (!cancelled) setReady(true);
     })();
     const t = setTimeout(() => {
       if (!cancelled) setReady(true);
-    }, 4000);
+    }, 2500);
     return () => {
       cancelled = true;
       clearTimeout(t);
@@ -97,23 +69,8 @@ function Bootstrap({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Layout de la app de USUARIOS (sin panel admin). */
 export default function RootLayout() {
-  // APK Admin: solo panel, sin reproductor ni tabs de usuario
-  if (IS_ADMIN_APP) {
-    return (
-      <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
-        <ErrorBoundary>
-          <Bootstrap>
-            <StatusBar style="light" />
-            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#000" } }}>
-              <Stack.Screen name="admin/index" />
-            </Stack>
-          </Bootstrap>
-        </ErrorBoundary>
-      </GestureHandlerRootView>
-    );
-  }
-
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
       <ErrorBoundary>
