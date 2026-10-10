@@ -9,6 +9,7 @@ import { CatalogProvider } from "@/context/CatalogContext";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { ExpandablePlayer } from "@/components/player/ExpandablePlayer";
 import { loadRemoteConfig } from "@/services/remoteConfig";
+import { IS_ADMIN_APP } from "@/constants/AppVariant";
 
 class ErrorBoundary extends Component<
   { children: React.ReactNode },
@@ -45,9 +46,7 @@ function Bootstrap({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         await loadRemoteConfig();
-      } catch {
-        /* offline / sin config: continuar */
-      }
+      } catch {}
       if (!cancelled) setReady(true);
     })();
     const t = setTimeout(() => {
@@ -69,8 +68,24 @@ function Bootstrap({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-/** Layout de la app de USUARIOS (sin panel admin). */
 export default function RootLayout() {
+  // APK Admin: solo panel de administración
+  if (IS_ADMIN_APP) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
+        <ErrorBoundary>
+          <Bootstrap>
+            <StatusBar style="light" />
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#000" } }}>
+              <Stack.Screen name="admin/index" />
+              <Stack.Screen name="index" />
+            </Stack>
+          </Bootstrap>
+        </ErrorBoundary>
+      </GestureHandlerRootView>
+    );
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
       <ErrorBoundary>
