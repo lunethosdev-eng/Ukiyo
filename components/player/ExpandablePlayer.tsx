@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { View, Text, StyleSheet, Image, Pressable, Dimensions, ImageBackground, ScrollView } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, interpolate, Extrapolation, runOnJS } from "react-native-reanimated";
@@ -26,6 +26,43 @@ export function ExpandablePlayer() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  const [lyricsPreview, setLyricsPreview] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!currentTrack) {
+        setLyricsPreview("");
+        return;
+      }
+      try {
+        const data = await fetchLyrics(
+          currentTrack.title,
+          currentTrack.artist,
+          currentTrack.album,
+          currentTrack.duration
+        );
+        if (cancelled) return;
+        if (data?.lines?.length) {
+          setLyricsPreview(data.lines.slice(0, 3).map((l) => l.text).join("\n"));
+          return;
+        }
+        const db = lyricsFromTrackText(currentTrack.lyricsText);
+        const junk = /procesado por seki|sincronizaci/i;
+        if (db?.lines?.length) {
+          const clean = db.lines.filter((l) => !junk.test(l.text)).slice(0, 3);
+          setLyricsPreview(clean.map((l) => l.text).join("\n") || "");
+        } else {
+          setLyricsPreview("");
+        }
+      } catch {
+        if (!cancelled) setLyricsPreview("");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentTrack?.id]);
 
   const openKaraoke = useCallback(() => {
     router.push("/player/karaoke");
@@ -182,7 +219,7 @@ export function ExpandablePlayer() {
         </Animated.View>
       </GestureDetector>
 
-      <ActionSheet isVisible={showOptions} onClose={() => setShowOptions(false)} track={currentTrack} />
+      <ActionSheet visible={showOptions} onClose={() => setShowOptions(false)} track={currentTrack} />
     </>
   );
 }
