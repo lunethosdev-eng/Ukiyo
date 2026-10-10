@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Ukiyo Admin",
+    "slug": "ukiyo-admin",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "ukiyo-admin",
+    "newArchEnabled": false,
+    "splash": {
+      "backgroundColor": "#000000",
+      "resizeMode": "contain",
+      "image": "./assets/splash-icon.png"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1e1b4b"
+      },
+      "package": "com.kokorofy.ukiyo.admin",
+      "permissions": ["INTERNET", "ACCESS_NETWORK_STATE"]
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.kokorofy.ukiyo.admin"
+    },
+    "plugins": ["expo-router", "expo-font"],
+    "extra": {
+      "isAdminApp": true
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
