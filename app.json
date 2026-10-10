@@ -33,14 +33,21 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.kokorofy.ukiyo",
       "infoPlist": {
-        "UIBackgroundModes": ["audio", "remote-notification"]
+        "UIBackgroundModes": [
+          "audio",
+          "remote-notification"
+        ]
       }
     },
     "plugins": [
       "expo-router",
       "expo-font",
-      ["expo-av", { "microphonePermission": false }],
-      ["expo-notifications", { "icon": "./assets/icon.png", "color": "#6d28d9" }]
+      [
+        "expo-av",
+        {
+          "microphonePermission": false
+        }
+      ]
     ],
     "extra": {
       "isAdminApp": false
