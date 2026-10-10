@@ -13,7 +13,7 @@ interface Props {
 
 /**
  * Glass style: Blur nativo + borde luminoso.
- * El contenido define la altura (no estira al 100%).
+ * Overlays no capturan toques → TextInput / Pressable funcionan.
  */
 export function LiquidGlass({
   children,
@@ -25,13 +25,23 @@ export function LiquidGlass({
   return (
     <View style={[styles.wrap, { borderRadius }, style]}>
       {Platform.OS === "ios" ? (
-        <BlurView intensity={intensity} tint={tint} style={StyleSheet.absoluteFill} />
+        <BlurView
+          intensity={intensity}
+          tint={tint}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
       ) : (
-        // Android: blur más débil + fondo sólido legible
-        <View style={[StyleSheet.absoluteFill, styles.androidBg]} />
+        <View
+          style={[StyleSheet.absoluteFill, styles.androidBg]}
+          pointerEvents="none"
+        />
       )}
       {Platform.OS === "ios" && (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(20,22,30,0.35)" }]} />
+        <View
+          style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(20,22,30,0.35)" }]}
+          pointerEvents="none"
+        />
       )}
       <LinearGradient
         colors={[
@@ -52,7 +62,9 @@ export function LiquidGlass({
         ]}
         pointerEvents="none"
       />
-      <View style={styles.content}>{children}</View>
+      <View style={styles.content} pointerEvents="box-none">
+        {children}
+      </View>
     </View>
   );
 }
@@ -70,6 +82,5 @@ const styles = StyleSheet.create({
   content: {
     zIndex: 1,
     width: "100%",
-    // sin height: '100%' → la caja se adapta al contenido
   },
 });
