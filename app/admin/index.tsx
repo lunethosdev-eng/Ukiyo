@@ -25,6 +25,7 @@ import {
   Announcement,
   RuntimeConfig,
 } from "@/services/remoteConfig";
+import { getIsAdminApp } from "@/constants/AppVariant";
 
 const ADMIN_SESSION_KEY = "@ukiyo/admin_ok";
 
@@ -154,7 +155,7 @@ export default function AdminScreen() {
     return (
       <SafeAreaView style={styles.root}>
         <Stack.Screen options={{ headerShown: false }} />
-        {!IS_ADMIN_APP && (
+        {!getIsAdminApp() && (
           <Pressable style={styles.back} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={28} color="#fff" />
           </Pressable>
