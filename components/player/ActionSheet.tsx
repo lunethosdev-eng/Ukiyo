@@ -25,27 +25,30 @@ import { usePlayback } from "@/context/PlaybackContext";
 const { height: H } = Dimensions.get("window");
 
 interface Props {
-  visible: boolean;
+  visible?: boolean;
+  isVisible?: boolean;
   track: Track | null;
   onClose: () => void;
 }
 
-export function ActionSheet({ visible, track, onClose }: Props) {
+export function ActionSheet({ visible, isVisible, track, onClose }: Props) {
+  const sheetOpen = visible ?? isVisible ?? false;
+
   const insets = useSafeAreaInsets();
   const { downloadTrack } = usePlayback();
   const translateY = useSharedValue(H);
   const opacity = useSharedValue(0);
-  const isVisible = visible;
+  
 
   React.useEffect(() => {
-    if (visible) {
+    if (sheetOpen) {
       opacity.value = withSpring(1);
       translateY.value = withSpring(0, { damping: 18, stiffness: 200 });
     } else {
       opacity.value = withSpring(0);
       translateY.value = withSpring(H, { damping: 18, stiffness: 200 });
     }
-  }, [visible]);
+  }, [sheetOpen]);
 
   const pan = Gesture.Pan()
     .onChange((e) => {
@@ -64,7 +67,7 @@ export function ActionSheet({ visible, track, onClose }: Props) {
   }));
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    pointerEvents: isVisible ? ("auto" as const) : ("none" as const),
+    pointerEvents: sheetOpen ? ("auto" as const) : ("none" as const),
   }));
 
   const onShare = async () => {
@@ -99,7 +102,7 @@ export function ActionSheet({ visible, track, onClose }: Props) {
     onClose();
   };
 
-  if (!track && !visible) return null;
+  if (!track && !sheetOpen) return null;
 
   const items = [
     { icon: "add-circle-outline" as const, label: "Agregar a Playlist", onPress: onPlaylist },
