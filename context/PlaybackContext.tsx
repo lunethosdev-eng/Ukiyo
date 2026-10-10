@@ -9,28 +9,7 @@ import React, {
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
-
-// Carga segura de TrackPlayer: si el nativo no está disponible, no crashea la app.
-let TrackPlayer: any = null;
-let Capability: any = {};
-let State: any = {};
-let Event: any = {};
-let useProgress: any = () => ({ position: 0, duration: 0 });
-let useTrackPlayerEvents: any = () => {};
-let TP_AVAILABLE = false;
-
-try {
-  const tp = require('react-native-track-player');
-  TrackPlayer = tp.default;
-  Capability = tp.Capability;
-  State = tp.State;
-  Event = tp.Event;
-  useProgress = tp.useProgress;
-  useTrackPlayerEvents = tp.useTrackPlayerEvents;
-  TP_AVAILABLE = true;
-} catch (e) {
-  console.warn('[Ukiyo] react-native-track-player no disponible:', e);
-}
+import { Audio, AVPlaybackStatus } from 'expo-av';
 
 export interface Track {
   id: string;
@@ -72,49 +51,28 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [downloadedTracks, setDownloadedTracks] = useState<Track[]>([]);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(0);
+
   const queueRef = useRef<Track[]>([]);
   const currentRef = useRef<Track | null>(null);
-  const { position, duration } = useProgress(500);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const indexRef = useRef(0);
 
   useEffect(() => {
     let mounted = true;
 
     (async () => {
-      if (TP_AVAILABLE && TrackPlayer) {
-        try {
-          await TrackPlayer.setupPlayer({ autoHandleInterruptions: true });
-        } catch (e: any) {
-          if (!String(e?.message ?? e).includes('already been initialized')) {
-            console.warn('TrackPlayer setupPlayer:', e);
-          }
-        }
-        try {
-          await TrackPlayer.updateOptions({
-            android: { appKilledPlaybackBehavior: 'ContinuePlayback' as any },
-            capabilities: [
-              Capability.Play,
-              Capability.Pause,
-              Capability.SkipToNext,
-              Capability.SkipToPrevious,
-              Capability.SeekTo,
-            ],
-            compactCapabilities: [
-              Capability.Play,
-              Capability.Pause,
-              Capability.SkipToNext,
-              Capability.SkipToPrevious,
-            ],
-            notificationCapabilities: [
-              Capability.Play,
-              Capability.Pause,
-              Capability.SkipToNext,
-              Capability.SkipToPrevious,
-            ],
-            progressUpdateEventInterval: 1,
-          });
-        } catch (e) {
-          console.warn('TrackPlayer updateOptions:', e);
-        }
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: true,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+      } catch (e) {
+        console.warn('Audio.setAudioModeAsync:', e);
       }
 
       try {
@@ -126,34 +84,61 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
     const net = NetInfo.addEventListener((s) =>
       setIsOffline(!(s.isConnected && s.isInternetReachable))
     );
+
     return () => {
       mounted = false;
       net();
+      if (soundRef.current) {
+        soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
+      }
     };
   }, []);
 
-  useTrackPlayerEvents(
-    TP_AVAILABLE
-      ? [Event.PlaybackState, Event.PlaybackActiveTrackChanged, Event.PlaybackQueueEnded]
-      : [],
-    async (event: any) => {
-      if (!TP_AVAILABLE) return;
-      if (event.type === Event.PlaybackState) {
-        setIsPlaying(
-          event.state === State.Playing ||
-            event.state === State.Buffering ||
-            event.state === State.Loading
-        );
-      }
-      if (event.type === Event.PlaybackActiveTrackChanged) {
-        const index = event.index;
-        if (typeof index === 'number' && queueRef.current[index]) {
-          currentRef.current = queueRef.current[index];
-          setCurrentTrack(queueRef.current[index]);
-        }
-      }
-      if (event.type === Event.PlaybackQueueEnded) setIsPlaying(false);
+  const onStatusUpdate = useCallback((status: AVPlaybackStatus) => {
+    if (!status.isLoaded) {
+      if (status.error) console.warn('Playback error:', status.error);
+      return;
     }
+    setPosition(status.positionMillis / 1000);
+    setDuration((status.durationMillis ?? 0) / 1000);
+    setIsPlaying(status.isPlaying);
+
+    if (status.didJustFinish && !status.isLooping) {
+      const next = indexRef.current + 1;
+      if (next < queueRef.current.length) {
+        const track = queueRef.current[next];
+        indexRef.current = next;
+        currentRef.current = track;
+        setCurrentTrack(track);
+        loadAndPlay(track).catch(() => {});
+      } else {
+        setIsPlaying(false);
+      }
+    }
+  }, []);
+
+  const loadAndPlay = useCallback(
+    async (track: Track) => {
+      try {
+        if (soundRef.current) {
+          await soundRef.current.unloadAsync();
+          soundRef.current = null;
+        }
+        const uri = isOffline && track.localUri ? track.localUri : track.url;
+        const { sound } = await Audio.Sound.createAsync(
+          { uri },
+          { shouldPlay: true, progressUpdateIntervalMillis: 500 },
+          onStatusUpdate
+        );
+        soundRef.current = sound;
+        setIsPlaying(true);
+      } catch (e) {
+        console.warn('No se pudo reproducir la pista', e);
+        setIsPlaying(false);
+      }
+    },
+    [isOffline, onStatusUpdate]
   );
 
   const play = useCallback(
@@ -165,56 +150,31 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
           : [track];
       const found = nextQueue.findIndex((t) => t.id === track.id);
       const normalized = found < 0 ? [...nextQueue, track] : nextQueue;
+      const idx = normalized.findIndex((t) => t.id === track.id);
+
       queueRef.current = normalized;
       setQueue(normalized);
+      indexRef.current = idx >= 0 ? idx : 0;
       currentRef.current = track;
       setCurrentTrack(track);
 
-      if (!TP_AVAILABLE || !TrackPlayer) {
-        console.warn('[Ukiyo] TrackPlayer no disponible — no se puede reproducir');
-        return;
-      }
-
-      try {
-        await TrackPlayer.reset();
-        await TrackPlayer.add(
-          normalized.map((t) => ({
-            id: t.id,
-            url: isOffline && t.localUri ? t.localUri : t.url,
-            title: t.title,
-            artist: t.artist,
-            album: t.album,
-            artwork: t.artwork,
-            duration: t.duration,
-          }))
-        );
-        await TrackPlayer.skip(normalized.findIndex((t) => t.id === track.id));
-        await TrackPlayer.play();
-        setIsPlaying(true);
-      } catch (e) {
-        console.warn('No se pudo reproducir la pista', e);
-        setIsPlaying(false);
-      }
+      await loadAndPlay(track);
     },
-    [isOffline]
+    [loadAndPlay]
   );
 
   const pause = useCallback(async () => {
-    if (TP_AVAILABLE && TrackPlayer) {
-      try {
-        await TrackPlayer.pause();
-      } catch {}
-    }
+    try {
+      await soundRef.current?.pauseAsync();
+    } catch {}
     setIsPlaying(false);
   }, []);
 
   const resume = useCallback(async () => {
-    if (TP_AVAILABLE && TrackPlayer) {
-      try {
-        await TrackPlayer.play();
-        setIsPlaying(true);
-      } catch {}
-    }
+    try {
+      await soundRef.current?.playAsync();
+      setIsPlaying(true);
+    } catch {}
   }, []);
 
   const togglePlay = useCallback(async () => {
@@ -223,26 +183,34 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
   }, [isPlaying, pause, resume]);
 
   const playNext = useCallback(async () => {
-    if (!TP_AVAILABLE || !TrackPlayer) return;
-    try {
-      await TrackPlayer.skipToNext();
-      await TrackPlayer.play();
-    } catch {}
-  }, []);
+    const next = indexRef.current + 1;
+    if (next >= queueRef.current.length) return;
+    const track = queueRef.current[next];
+    indexRef.current = next;
+    currentRef.current = track;
+    setCurrentTrack(track);
+    await loadAndPlay(track);
+  }, [loadAndPlay]);
 
   const playPrev = useCallback(async () => {
-    if (!TP_AVAILABLE || !TrackPlayer) return;
-    try {
-      if (position > 3) await TrackPlayer.seekTo(0);
-      else await TrackPlayer.skipToPrevious();
-      await TrackPlayer.play();
-    } catch {}
-  }, [position]);
+    if (position > 3) {
+      try {
+        await soundRef.current?.setPositionAsync(0);
+      } catch {}
+      return;
+    }
+    const prev = indexRef.current - 1;
+    if (prev < 0) return;
+    const track = queueRef.current[prev];
+    indexRef.current = prev;
+    currentRef.current = track;
+    setCurrentTrack(track);
+    await loadAndPlay(track);
+  }, [position, loadAndPlay]);
 
   const seekTo = useCallback(async (seconds: number) => {
-    if (!TP_AVAILABLE || !TrackPlayer) return;
     try {
-      await TrackPlayer.seekTo(Math.max(0, seconds));
+      await soundRef.current?.setPositionAsync(Math.max(0, seconds) * 1000);
     } catch {}
   }, []);
 
