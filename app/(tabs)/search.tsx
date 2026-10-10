@@ -62,7 +62,7 @@ export default function SearchScreen() {
 
   const data = useMemo(() => {
     const map = new Map<string, Track>();
-    [...local, ...remote].forEach((t) => {
+    [...(Array.isArray(local) ? local : []), ...(Array.isArray(remote) ? remote : [])].forEach((t) => {
       if (t?.id && !map.has(t.id)) map.set(t.id, t);
     });
     return Array.from(map.values());
