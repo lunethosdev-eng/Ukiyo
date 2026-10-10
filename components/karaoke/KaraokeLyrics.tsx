@@ -45,12 +45,7 @@ export function KaraokeLyrics() {
     if (!currentTrack) return;
     let cancelled = false;
     (async () => {
-      // Primero letras guardadas en ukiyo server (LRC o texto)
-      const fromDb = lyricsFromTrackText(currentTrack.lyricsText);
-      if (fromDb?.lines?.length) {
-        if (!cancelled) setLines(fromDb.lines);
-        return;
-      }
+      // 1) LRCLIB (API pública)  2) DB solo si no es basura placeholder
       const data = await fetchLyrics(
         currentTrack.title,
         currentTrack.artist,
@@ -58,8 +53,20 @@ export function KaraokeLyrics() {
         currentTrack.duration
       );
       if (cancelled) return;
-      if (data?.lines?.length) setLines(data.lines);
-      else setLines([]);
+      if (data?.lines?.length) {
+        setLines(data.lines);
+        return;
+      }
+      const fromDb = lyricsFromTrackText(currentTrack.lyricsText);
+      const junk = /procesado por seki|sincronizaci[oó]n seki|letras de .* por /i;
+      if (fromDb?.lines?.length) {
+        const clean = fromDb.lines.filter((l) => !junk.test(l.text));
+        if (clean.length >= 3) {
+          setLines(clean);
+          return;
+        }
+      }
+      setLines([]);
     })();
     return () => { cancelled = true; };
   }, [currentTrack?.id]);
