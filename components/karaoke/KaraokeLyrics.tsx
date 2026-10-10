@@ -50,8 +50,19 @@ export function KaraokeLyrics() {
         currentTrack.album,
         currentTrack.duration
       );
-      if (data?.lines) setLines(data.lines);
-      else setLines([]);
+      if (data?.lines?.length) {
+        setLines(data.lines);
+      } else if (currentTrack.lyricsText) {
+        // Accept plain text lyrics returned by /api/search as a useful fallback.
+        const fallback = currentTrack.lyricsText
+          .split(/\\r?\\n/)
+          .map((text) => text.trim())
+          .filter(Boolean)
+          .map((text, index) => ({ time: index * 4, text }));
+        setLines(fallback);
+      } else {
+        setLines([]);
+      }
     })();
   }, [currentTrack?.id]);
 
