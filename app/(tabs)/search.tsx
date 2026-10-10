@@ -29,7 +29,13 @@ export default function SearchScreen() {
       const data: any = await SekiApiService.search(q);
       if (id !== reqId.current) return;
 
-      const results = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [];
+      const results = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.results) ? data.results
+        : Array.isArray(data?.songs) ? data.songs
+        : Array.isArray(data?.tracks) ? data.tracks
+        : Array.isArray(data?.data) ? data.data
+        : [];
       const mapped: Track[] = results
         .map((r: any, i: number) => ({
           id: String(r?.id ?? r?.youtube_id ?? `r-${i}`),
@@ -37,7 +43,7 @@ export default function SearchScreen() {
           artist: String(r?.artist || "Desconocido"),
           album: r?.album,
           artwork: String(r?.cover_url || r?.artwork || ""),
-          url: String(r?.audio_url || r?.url || ""),
+          url: String(r?.audio_url || r?.stream_url || r?.download_url || r?.url || ""),
           duration: r?.duration_seconds,
           lyricsText: r?.lyrics_text,
           genre: r?.genre,
