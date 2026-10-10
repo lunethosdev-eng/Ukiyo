@@ -1,43 +1,153 @@
-import React from "react";
+import React, { Component, useEffect, useState } from "react";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
+import { View, Text, ActivityIndicator, StyleSheet, Platform } from "react-native";
 import { PlaybackProvider } from "@/context/PlaybackContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { CatalogProvider } from "@/context/CatalogContext";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { ExpandablePlayer } from "@/components/player/ExpandablePlayer";
+import { loadRemoteConfig, registerPushToken } from "@/services/remoteConfig";
+import { IS_ADMIN_APP } from "@/constants/AppVariant";
+
+class ErrorBoundary extends Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={eb.box}>
+          <Text style={eb.title}>Error en la app</Text>
+          <Text style={eb.msg}>{String(this.state.error?.message ?? this.state.error)}</Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const eb = StyleSheet.create({
+  box: { flex: 1, backgroundColor: "#000", justifyContent: "center", padding: 24 },
+  title: { color: "#f87171", fontSize: 18, fontWeight: "700", marginBottom: 12 },
+  msg: { color: "rgba(255,255,255,0.7)", fontSize: 13 },
+});
+
+function Bootstrap({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await loadRemoteConfig();
+      } catch {}
+      if (!IS_ADMIN_APP) {
+        try {
+          const Notifications = require("expo-notifications");
+          const Device = require("expo-device");
+          if (Device.isDevice) {
+            const { status: existing } = await Notifications.getPermissionsAsync();
+            let finalStatus = existing;
+            if (existing !== "granted") {
+              const { status } = await Notifications.requestPermissionsAsync();
+              finalStatus = status;
+            }
+            if (finalStatus === "granted") {
+              const tokenData = await Notifications.getExpoPushTokenAsync();
+              if (tokenData?.data) {
+                await registerPushToken(tokenData.data, Platform.OS);
+              }
+            }
+            Notifications.setNotificationHandler({
+              handleNotification: async () => ({
+                shouldShowAlert: true,
+                shouldPlaySound: true,
+                shouldSetBadge: false,
+              }),
+            });
+          }
+        } catch (e) {
+          console.warn("Notifications setup skipped:", e);
+        }
+      }
+      if (!cancelled) setReady(true);
+    })();
+    const t = setTimeout(() => {
+      if (!cancelled) setReady(true);
+    }, 4000);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, []);
+
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color="#a78bfa" size="large" />
+      </View>
+    );
+  }
+  return <>{children}</>;
+}
 
 export default function RootLayout() {
+  // APK Admin: solo panel, sin reproductor ni tabs de usuario
+  if (IS_ADMIN_APP) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
+        <ErrorBoundary>
+          <Bootstrap>
+            <StatusBar style="light" />
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#000" } }}>
+              <Stack.Screen name="admin/index" />
+            </Stack>
+          </Bootstrap>
+        </ErrorBoundary>
+      </GestureHandlerRootView>
+    );
+  }
+
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
-      <AuthProvider>
-        <SettingsProvider>
-        <CatalogProvider>
-          <PlaybackProvider>
-            <StatusBar style="light" />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: "#000" },
-                animation: "fade",
-              }}
-            >
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen
-                name="player/karaoke"
-                options={{
-                  presentation: "fullScreenModal",
-                  animation: "slide_from_bottom",
-                }}
-              />
-            </Stack>
-            <ExpandablePlayer />
-          </PlaybackProvider>
-        </CatalogProvider>
-        </SettingsProvider>
-      </AuthProvider>
+      <ErrorBoundary>
+        <Bootstrap>
+          <AuthProvider>
+            <SettingsProvider>
+              <CatalogProvider>
+                <PlaybackProvider>
+                  <StatusBar style="light" />
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      contentStyle: { backgroundColor: "#000" },
+                      animation: "fade",
+                    }}
+                  >
+                    <Stack.Screen name="(auth)" />
+                    <Stack.Screen name="(tabs)" />
+                    <Stack.Screen
+                      name="player/karaoke"
+                      options={{
+                        presentation: "fullScreenModal",
+                        animation: "slide_from_bottom",
+                      }}
+                    />
+                    <Stack.Screen name="settings/index" />
+                  </Stack>
+                  <ExpandablePlayer />
+                </PlaybackProvider>
+              </CatalogProvider>
+            </SettingsProvider>
+          </AuthProvider>
+        </Bootstrap>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }
