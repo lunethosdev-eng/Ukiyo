@@ -154,13 +154,15 @@ export default function AdminScreen() {
     return (
       <SafeAreaView style={styles.root}>
         <Stack.Screen options={{ headerShown: false }} />
-        <Pressable style={styles.back} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={28} color="#fff" />
-        </Pressable>
+        {!IS_ADMIN_APP && (
+          <Pressable style={styles.back} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={28} color="#fff" />
+          </Pressable>
+        )}
         <View style={styles.lockBox}>
           <Ionicons name="shield-checkmark" size={48} color="#a78bfa" />
-          <Text style={styles.lockTitle}>Panel Admin</Text>
-          <Text style={styles.lockHint}>Introduce el PIN de administrador</Text>
+          <Text style={styles.lockTitle}>Ukiyo Admin</Text>
+          <Text style={styles.lockHint}>Activa el panel con tu PIN de administrador</Text>
           <TextInput
             style={styles.input}
             value={pin}
@@ -172,7 +174,7 @@ export default function AdminScreen() {
             onSubmitEditing={tryUnlock}
           />
           <Pressable style={styles.btn} onPress={tryUnlock}>
-            <Text style={styles.btnText}>Entrar</Text>
+            <Text style={styles.btnText}>Activar panel</Text>
           </Pressable>
         </View>
       </SafeAreaView>
