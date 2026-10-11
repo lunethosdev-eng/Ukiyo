@@ -70,7 +70,8 @@ export function PlaybackProvider({ children }: { children: React.ReactNode }) {
           playsInSilentModeIOS: true,
           shouldDuckAndroid: true,
           playThroughEarpieceAndroid: false,
-        });
+          // Controles nativos limitados con expo-av; audio sigue en background
+        } as any);
       } catch (e) {
         console.warn('Audio.setAudioModeAsync:', e);
       }
