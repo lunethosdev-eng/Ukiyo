@@ -6,6 +6,7 @@ import React, {
   useCallback,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { upsertMyProfile } from "@/services/socialService";
 
 const KEY = "@ukiyo/auth";
 const USERS_KEY = "@ukiyo/users_local";
@@ -84,8 +85,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const persist = async (u: UserProfile | null) => {
     const next = u ? withBadge(u) : null;
     setUser(next);
-    if (next) await AsyncStorage.setItem(KEY, JSON.stringify(next));
-    else await AsyncStorage.removeItem(KEY);
+    if (next) {
+      await AsyncStorage.setItem(KEY, JSON.stringify(next));
+      if (!next.isGuest && next.nickname) {
+        upsertMyProfile({
+          nickname: next.nickname,
+          name: next.name,
+          email: next.email,
+          photo_uri: next.photoUri,
+          banner_uri: next.bannerUri,
+          bio: next.bio,
+          badge: next.badge,
+          is_artist: next.isArtist,
+          is_public: next.isPublic,
+        }).catch(() => {});
+      }
+    } else await AsyncStorage.removeItem(KEY);
   };
 
   const login = useCallback(async (email: string, password: string) => {
