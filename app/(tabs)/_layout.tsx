@@ -19,20 +19,23 @@ function LiquidTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     if (state.index !== index) navigation.navigate(route.name);
   };
 
+  const iconFor = (name: string) => {
+    if (name === "search") return "search";
+    if (name === "library") return "musical-notes";
+    if (name === "chat") return "chatbubbles";
+    if (name === "profile" || name === "profile/index") return "person-circle";
+    return "play-circle";
+  };
+
   return (
     <View style={[styles.tabContainer, { bottom: Math.max(insets.bottom, 10) }]}>
       <View style={styles.bar}>
         {state.routes.map((route, index) => {
           const focused = state.index === index;
           const options = descriptors[route.key].options;
-          const iconName =
-            route.name === "search"
-              ? "search"
-              : route.name === "library"
-                ? "musical-notes"
-                : route.name === "profile"
-                  ? "person-circle"
-                  : "play-circle";
+          // skip hidden routes
+          if ((options as any).href === null) return null;
+          const iconName = iconFor(route.name);
           return (
             <Pressable
               key={route.key}
@@ -45,7 +48,7 @@ function LiquidTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             >
               <Ionicons
                 name={iconName as any}
-                size={26}
+                size={24}
                 color={focused ? "#fff" : "rgba(255,255,255,0.58)"}
               />
               <Text
@@ -73,6 +76,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" options={{ title: "Inicio" }} />
       <Tabs.Screen name="search" options={{ title: "Buscar" }} />
       <Tabs.Screen name="library" options={{ title: "Biblioteca" }} />
+      <Tabs.Screen name="chat" options={{ title: "Chat" }} />
       <Tabs.Screen name="profile" options={{ title: "Tú" }} />
     </Tabs>
   );
@@ -81,30 +85,24 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   tabContainer: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    height: 68,
-    zIndex: 100,
-    elevation: 100,
-    paddingHorizontal: 22,
+    left: 16,
+    right: 16,
   },
   bar: {
-    flex: 1,
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "rgba(18,22,32,0.94)",
+    backgroundColor: "rgba(20,20,24,0.92)",
     borderRadius: 28,
-    borderWidth: 1.2,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.12)",
-    overflow: "hidden",
   },
   tabItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    height: "100%",
+    gap: 2,
   },
-  pressed: { opacity: 0.65 },
-  tabLabel: { fontSize: 10, fontWeight: "600", marginTop: 4 },
+  pressed: { opacity: 0.7 },
+  tabLabel: { fontSize: 10, fontWeight: "600" },
 });
