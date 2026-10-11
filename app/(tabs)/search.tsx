@@ -16,6 +16,8 @@ import { SongsService, Track } from "@/services/songsService";
 import { SekiApiService } from "@/services/sekiApi";
 import { LiquidGlass } from "@/components/liquid/LiquidGlass";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { searchProfiles, PublicProfile } from "@/services/socialService";
 
 export default function SearchScreen() {
   const [query, setQuery] = useState("");
@@ -24,6 +26,8 @@ export default function SearchScreen() {
   const [error, setError] = useState<string | null>(null);
   const { tracks } = useCatalog();
   const { play } = usePlayback();
+  const router = useRouter();
+  const [profiles, setProfiles] = useState<PublicProfile[]>([])
   const reqId = useRef(0);
   const inputRef = useRef<TextInput>(null);
 
@@ -89,9 +93,13 @@ export default function SearchScreen() {
     const q = query.trim();
     if (q.length < 2) {
       setRemote([]);
+      setProfiles([]);
       return;
     }
-    const t = setTimeout(() => onSearch(q), 450);
+    const t = setTimeout(() => {
+      onSearch(q);
+      searchProfiles(q).then(setProfiles);
+    }, 450);
     return () => clearTimeout(t);
   }, [query]);
 
@@ -148,6 +156,32 @@ export default function SearchScreen() {
       )}
       {!!error && !searching && <Text style={styles.error}>{error}</Text>}
 
+      {profiles.length > 0 && (
+        <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+          <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, marginBottom: 8 }}>Personas</Text>
+          {profiles.map((p) => (
+            <Pressable
+              key={p.nickname}
+              style={styles.row}
+              onPress={() => router.push(`/user/${p.nickname}`)}
+            >
+              {p.photo_uri ? (
+                <Image source={{ uri: p.photo_uri }} style={styles.art} />
+              ) : (
+                <View style={[styles.art, styles.artPh, { alignItems: "center", justifyContent: "center" }]}>
+                  <Ionicons name="person" size={20} color="#fff" />
+                </View>
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.title}>{p.name || p.nickname}</Text>
+                <Text style={styles.artist}>@{p.nickname}</Text>
+              </View>
+            </Pressable>
+          ))}
+          <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, marginTop: 12, marginBottom: 4 }}>Canciones</Text>
+        </View>
+      )}
+
       <FlatList
         data={data}
         keyExtractor={(item) => item.id}
@@ -155,9 +189,9 @@ export default function SearchScreen() {
         keyboardDismissMode="on-drag"
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 140 }}
         ListEmptyComponent={
-          !searching ? (
+          !searching && profiles.length === 0 ? (
             <Text style={styles.empty}>
-              {query.length > 1 ? "Sin resultados" : "Busca algo para empezar"}
+              {query.length > 1 ? "Sin resultados" : "Busca canciones o personas"}
             </Text>
           ) : null
         }
