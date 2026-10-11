@@ -21,6 +21,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { LiquidGlass } from "@/components/liquid/LiquidGlass";
 import { Track } from "@/services/songsService";
 import { usePlayback } from "@/context/PlaybackContext";
+import { useAuth } from "@/context/AuthContext";
+import { addFavorite } from "@/services/socialService";
 
 const { height: H } = Dimensions.get("window");
 
@@ -36,6 +38,7 @@ export function ActionSheet({ visible, isVisible, track, onClose }: Props) {
 
   const insets = useSafeAreaInsets();
   const { downloadTrack } = usePlayback();
+  const { user } = useAuth();
   const translateY = useSharedValue(H);
   const opacity = useSharedValue(0);
   
@@ -97,6 +100,23 @@ export function ActionSheet({ visible, isVisible, track, onClose }: Props) {
     onClose();
   };
 
+  const onFavorite = async () => {
+    if (!track || !user?.nickname || user.isGuest) {
+      Alert.alert("Inicia sesión", "Para guardar favoritas en tu perfil.");
+      onClose();
+      return;
+    }
+    await addFavorite(user.nickname, {
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      artwork: track.artwork,
+      url: track.url,
+    });
+    Alert.alert("Guardada", "Añadida a tus favoritas del perfil.");
+    onClose();
+  };
+
   const onArtist = () => {
     Alert.alert(track?.artist || "Artista", "Perfil de artista próximamente.");
     onClose();
@@ -106,6 +126,7 @@ export function ActionSheet({ visible, isVisible, track, onClose }: Props) {
 
   const items = [
     { icon: "add-circle-outline" as const, label: "Agregar a Playlist", onPress: onPlaylist },
+    { icon: "heart-outline" as const, label: "Favorita en mi perfil", onPress: onFavorite },
     { icon: "download-outline" as const, label: "Descargar", onPress: onDownload },
     { icon: "share-outline" as const, label: "Compartir", onPress: onShare },
     { icon: "person-outline" as const, label: "Ver Artista", onPress: onArtist },
