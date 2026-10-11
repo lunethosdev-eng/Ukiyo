@@ -18,7 +18,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth, BadgeLevel } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { LiquidGlass } from "@/components/liquid/LiquidGlass";
-import * as ImagePicker from "expo-image-picker";
 import { submitReport } from "@/services/reportService";
 
 const BADGE_META: Record<
@@ -64,25 +63,35 @@ export default function ProfileScreen() {
   };
 
   const pickImage = async (kind: "photo" | "banner") => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert("Permiso necesario", "Activa acceso a fotos para subir banner/foto.");
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-      allowsEditing: true,
-      aspect: kind === "banner" ? [16, 9] : [1, 1],
-    });
-    if (res.canceled || !res.assets?.[0]?.uri) return;
-    const uri = res.assets[0].uri;
-    if (kind === "photo") {
-      setPhotoUrl(uri);
-      await updateProfile({ photoUri: uri });
-    } else {
-      setBannerUrl(uri);
-      await updateProfile({ bannerUri: uri });
+    try {
+      // Opcional: si el usuario instaló expo-image-picker
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const ImagePicker = require("expo-image-picker");
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert("Permiso necesario", "Activa acceso a fotos para subir banner/foto.");
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions?.Images ?? "Images",
+        quality: 0.8,
+        allowsEditing: true,
+        aspect: kind === "banner" ? [16, 9] : [1, 1],
+      });
+      if (res.canceled || !res.assets?.[0]?.uri) return;
+      const uri = res.assets[0].uri;
+      if (kind === "photo") {
+        setPhotoUrl(uri);
+        await updateProfile({ photoUri: uri });
+      } else {
+        setBannerUrl(uri);
+        await updateProfile({ bannerUri: uri });
+      }
+    } catch {
+      Alert.alert(
+        "Galería no disponible en este build",
+        "Pega una URL de imagen en el campo de abajo (puedes subirla a imgur o similar)."
+      );
     }
   };
 
